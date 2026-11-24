@@ -50,7 +50,10 @@ test("README tells a user of the deprecated ddevkim/vera marketplace how to remo
   const text = readme();
   const start = text.indexOf("\n### Moving from ddevkim/vera\n");
   assert.ok(start > 0, "README has no Moving from ddevkim/vera section");
-  const section = text.slice(start, text.indexOf("\n### ", start + 1));
+  // The section ends at the next heading of either level: it is the last one under "## hub".
+  const rest = text.slice(start + 1);
+  const end = rest.search(/\n#{2,3} /);
+  const section = end < 0 ? rest : rest.slice(0, end);
   for (const cmd of [
     "claude plugin uninstall vera@vera",
     "claude plugin marketplace remove vera",
@@ -72,6 +75,36 @@ test("every relative link and image path in README exists", () => {
     const file = t.split("#")[0];
     assert.ok(fs.existsSync(path.join(ROOT, file)), `broken link: ${t}`);
   }
+});
+
+// The anchors GitHub gives README's headings: lower case, punctuation other than - and _ dropped, each space a hyphen,
+// and -1, -2 on a repeat. Lines inside code fences are not headings.
+function anchors(md) {
+  const out = new Set();
+  const seen = new Map();
+  let fence = false;
+  for (const line of md.split("\n")) {
+    if (/^\s*```/.test(line)) { fence = !fence; continue; }
+    const m = !fence && line.match(/^#{1,6} +(.+?) *$/);
+    if (!m) continue;
+    const slug = m[1].toLowerCase().replace(/[^\p{L}\p{N} _-]/gu, "").replace(/ /g, "-");
+    const n = seen.get(slug) || 0;
+    seen.set(slug, n + 1);
+    out.add(n ? `${slug}-${n}` : slug);
+  }
+  return out;
+}
+
+test("every #anchor into README, from README and from the other docs, names a heading", () => {
+  const text = readme();
+  const names = anchors(text);
+  const links = [...text.matchAll(/\]\(#([^)\s]+)\)/g)].map(m => ["README.md", m[1]]);
+  for (const doc of ["CONTRIBUTING.md", "SECURITY.md"]) {
+    const other = fs.readFileSync(path.join(ROOT, doc), "utf8");
+    links.push(...[...other.matchAll(/\]\(README\.md#([^)\s]+)\)/g)].map(m => [doc, m[1]]));
+  }
+  assert.ok(links.length > 0, "no anchor links found");
+  for (const [doc, a] of links) assert.ok(names.has(a), `${doc} links to README.md#${a}, which no heading has`);
 });
 
 test("README shows the dashboard screenshot", () => {
