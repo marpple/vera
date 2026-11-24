@@ -51,24 +51,44 @@ Run a hub on a repo, and with instructions, you would give an agent session anyw
 Claude Code:
 
 ```sh
-claude plugin marketplace add ddevkim/vera
-claude plugin install vera@vera
+claude plugin marketplace add marpple/vera
+claude plugin install vera@mco
 ```
 
-Inside a Claude Code session: `/plugin marketplace add ddevkim/vera`, then `/plugin install vera@vera`.
+Inside a Claude Code session: `/plugin marketplace add marpple/vera`, then `/plugin install vera@mco`.
 
 Codex:
 
 ```sh
-codex plugin marketplace add ddevkim/vera
-codex plugin add vera@vera
+codex plugin marketplace add marpple/vera
+codex plugin add vera@mco
 ```
 
 Other agents, with the `skills` CLI:
 
 ```sh
-npx skills add ddevkim/vera --skill hub
+npx skills add marpple/vera --skill hub
 ```
+
+### Moving from ddevkim/vera
+
+Vera was first published in a marketplace named `vera` at `ddevkim/vera`. That marketplace is deprecated and gets no more releases. Remove the old install, then install as above. The skill keeps its name, `/vera:hub`, and a hub folder you already have is not touched.
+
+Claude Code:
+
+```sh
+claude plugin uninstall vera@vera
+claude plugin marketplace remove vera
+```
+
+Codex:
+
+```sh
+codex plugin remove vera@vera
+codex plugin marketplace remove vera
+```
+
+An install made with `npx skills` has no marketplace: run `npx skills remove hub`, then add the skill again as above.
 
 ### Start a hub
 
@@ -107,20 +127,20 @@ The dashboard and the walkthrough page show their labels in Korean or English, f
 
 ### Update
 
-Claude Code can update Vera on its own. Third-party marketplaces such as this one start with auto-update off, so turn it on once on each machine: in a Claude Code session run `/plugin`, open the **Marketplaces** tab, select `vera`, then **Enable auto-update**. Claude Code then checks for a new version in the background after a session starts; the running session keeps its version until you run `/reload-plugins`, and the next session loads the new one. If `DISABLE_AUTOUPDATER=1` or `DISABLE_UPDATES=1` is set, the toggle is hidden; set `FORCE_AUTOUPDATE_PLUGINS=1` as well to keep plugin updates.
+Claude Code can update Vera on its own. Third-party marketplaces such as this one start with auto-update off, so turn it on once on each machine: in a Claude Code session run `/plugin`, open the **Marketplaces** tab, select `mco`, then **Enable auto-update**. Claude Code then checks for a new version in the background after a session starts; the running session keeps its version until you run `/reload-plugins`, and the next session loads the new one. If `DISABLE_AUTOUPDATER=1` or `DISABLE_UPDATES=1` is set, the toggle is hidden; set `FORCE_AUTOUPDATE_PLUGINS=1` as well to keep plugin updates.
 
 To update by hand instead (restart the session after):
 
 ```sh
-claude plugin marketplace update vera
-claude plugin update vera@vera
+claude plugin marketplace update mco
+claude plugin update vera@mco
 ```
 
 Codex has no auto-update: run these after each release, once in each `CODEX_HOME` you use:
 
 ```sh
-codex plugin marketplace upgrade vera
-codex plugin add vera@vera
+codex plugin marketplace upgrade mco
+codex plugin add vera@mco
 ```
 
 npx skills:
@@ -134,15 +154,15 @@ npx skills update hub
 Claude Code:
 
 ```sh
-claude plugin uninstall vera@vera
-claude plugin marketplace remove vera
+claude plugin uninstall vera@mco
+claude plugin marketplace remove mco
 ```
 
 Codex:
 
 ```sh
-codex plugin remove vera@vera
-codex plugin marketplace remove vera
+codex plugin remove vera@mco
+codex plugin marketplace remove mco
 ```
 
 npx skills:
@@ -164,7 +184,7 @@ For maintainers, and for an agent asked to release. A merge to `main` does not r
 
    Installs do not read the tag: they read the version in `main`. The tag and the release are the history people see on GitHub. Releases before 0.3.0 have neither.
 3. Update your own installs as in [Update](#update), then check that each one shows the new version (`claude plugin list`, `codex plugin list`):
-   - Claude Code updates one scope per run. With the plugin installed in both, run `claude plugin update vera@vera --scope user` and `claude plugin update vera@vera --scope project`.
+   - Claude Code updates one scope per run. With the plugin installed in both, run `claude plugin update vera@mco --scope user` and `claude plugin update vera@mco --scope project`.
    - Codex: once in each `CODEX_HOME` you use.
 4. A session that was already running keeps the old version until `/reload-plugins` or a restart.
 

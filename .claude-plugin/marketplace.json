@@ -1,10 +1,10 @@
 {
-  "name": "vera",
+  "name": "mco",
   "owner": {
-    "name": "ddevkim"
+    "name": "marpple"
   },
   "metadata": {
-    "description": "Vera: agent skills by ddevkim for work that is verified before it is called done"
+    "description": "Agent plugins published by Marpple. Vera: agent skills for work that is verified before it is called done"
   },
   "plugins": [
     {
