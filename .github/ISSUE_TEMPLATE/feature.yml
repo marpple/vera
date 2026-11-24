@@ -1,0 +1,40 @@
+name: Feature request
+description: Propose a new behaviour or a change to an existing one. Open it before the work starts.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is hard or impossible today, and who runs into it, and when.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: The proposed behaviour
+      description: What the hub or a script does once this is done.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Completion criteria
+      description: Sentences someone can check by looking. The pull request is verified against them.
+      placeholder: |
+        - After the hub resumes, the dashboard shows ...
+        - `node --test` has a test that checks ...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other ways you looked at, and why you did not choose them.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the open and closed issues for this proposal.
+          required: true
