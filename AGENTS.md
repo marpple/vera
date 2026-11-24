@@ -9,6 +9,8 @@ Vera is a set of agent skills shipped as one plugin for Claude Code and Codex. T
 
 ## Where things live
 
+Three folders have their own guide, with a table of the files in them: `skills/AGENTS.md`, `tests/AGENTS.md`, and `.github/AGENTS.md`. Read the one for the folder you work in. There is none below `skills/hub/`, because what is in that folder is installed on users' machines.
+
 - `skills/hub/SKILL.md` and `skills/hub/references/`: what the hub agent follows. Write them in English, examples included; the `ko` label tables in `skills/hub/templates/` are the Korean locale.
 - `skills/hub/templates/`: files the hub copies into each hub folder. It never edits them there, except `state.js`, which it fills once and then edits after every event. When you add, rename, or remove a template, update all four copy lists: the hub folder table, "Resume", and step 5 "Build the folder" in `skills/hub/SKILL.md`, and step 1 of the second part of `skills/hub/references/upgrade.md`. Only step 5 copies `state.js`: copying it on a resume would overwrite the hub's live state. A list that misses a template leaves resumed hubs on the old copy. `tests/template-copies.test.cjs` fails when a list differs from the folder.
 - `skills/hub/scripts/`: scripts the hub runs from this skill's folder, never copied.
@@ -20,9 +22,32 @@ Vera is a set of agent skills shipped as one plugin for Claude Code and Codex. T
 
 Everything under `skills/` runs on someone else's machine: no absolute paths, user names, or local tools beyond the prerequisites in `README.md`. `tests/skill-text.test.cjs` checks for the common cases. `README.md` holds no Hangul.
 
+## Language
+
+Vera is for users everywhere, so English is the language of the repo and of everything on GitHub. The developer may talk to you in another language: answer them in theirs, and still write these in English.
+
+- Every file in the repo: skill text, scripts and their comments, tests, docs, and the forms and templates under `.github/`.
+- Commit subjects and bodies, pull request titles and bodies, issues, review comments, and release notes.
+- The manifests in `.claude-plugin/`, and the repo's description and topics on GitHub.
+
+Another language belongs in the repo only as a locale the product supports or a test of one: the `ko` label tables in `skills/hub/templates/`, and the fixtures and tests for them. Do not translate these away, and do not add a file written in another language.
+
+## Issues, branches, and review
+
+The steps a person follows are in `CONTRIBUTING.md`. These are the rules, and GitHub enforces the ones about `main` with the ruleset recorded in `.github/rulesets/main.json`.
+
+- **An issue first.** A bug, a wrong instruction, or a check that fails on `main` gets an issue from the bug form in `.github/ISSUE_TEMPLATE/` before the fix, and a new behaviour gets one from the feature form before the work. A change that needs no explaining, such as a typo, may go straight to a pull request that says so under its issue heading.
+- **A security problem is never a public issue.** Follow `SECURITY.md`.
+- **`main` takes no direct push.** Every change reaches it through a pull request from a branch.
+- **A pull request merges by squash only**, with `test (18)` and `test (26)` green, the branch up to date with `main`, and every review conversation resolved. Nobody bypasses this, admins included.
+- **An approval is not required to merge.** Ask for a review when the change is risky or you want a second reader, and resolve what the reviewer raises before the merge.
+- **As an agent, never approve a pull request, and never merge one unless the developer asks you to in this conversation.** When a rule blocks a merge, say which one and stop: do not use `--admin`, change the ruleset, or push to `main` another way.
+- **Only a maintainer merges**: an MCO developer with write access. Anyone else opens a pull request from a fork.
+
 ## Commits and pull requests
 
-- One concern per pull request, branched from `origin/main`. Pull requests are normally squash-merged, so the title becomes the commit subject on `main`.
+- One concern per pull request, branched from `origin/main`. The title becomes the commit subject on `main`.
 - Titles and commit subjects are English sentences in the imperative mood with no type prefix, such as "Refuse gh pr merge in a Claude worker's worktree". The commit body says what changed and why.
-- The pull request body has `## What` (the change and the reason, with a table when cases differ) and `## Verification` (the commands you ran and what they printed, such as the `node --test` count).
+- The pull request body fills `.github/PULL_REQUEST_TEMPLATE.md`: `## What` (the change and the reason, with a table when cases differ), `## Issue` (`Closes #<n>`), `## Verification` (the commands you ran and what they printed, such as the `node --test` count), and the checklist.
 - Name no AI agent in commits or pull requests: no `Co-Authored-By` trailer for an agent and no "Generated with" line.
+- A merged release pull request is tagged and published by `.github/workflows/release.yml`: do not create the tag by hand.
