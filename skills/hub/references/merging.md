@@ -2,7 +2,7 @@
 
 Read this before you ask the developer to approve a merge, and again before you run the merge. The hub runs every merge; workers never do. No merge uses `--delete-branch`: the branch is still checked out in the worker's worktree, so gh's local delete fails and can skip the remote delete. Branches go in the cleanup ([cleanup.md](cleanup.md)).
 
-Korean strings in this file are examples for a Korean-speaking developer: write the same meaning in the developer's language ([SKILL.md](../SKILL.md), "Language").
+Quoted strings in this file are examples, in English: write the same meaning in the developer's language ([SKILL.md](../SKILL.md), "Language").
 
 ## Preflight before asking for approval
 
@@ -22,20 +22,20 @@ S is the one commit the whole preflight is about: the commit GitHub shows as the
 - Hash differs from `reviewedDiff`: the PR's own lines changed after the review. It gets a new walkthrough round and a review first ([walkthrough.md](walkthrough.md), "Changes after the approval").
 - `mergeStateStatus: BEHIND`: say so. After approval, run `gh pr update-branch <n>`, wait for green CI, and run the preflight again for its new S: hash unchanged, merge S without asking again; changed (the update touched the PR's own lines), treat it as a change after the approval and ask again.
 - `merge-tree` exits non-zero: name the conflicting files and send the rebase to the PR's worker.
-- `reviewDecision` is not `APPROVED` while the repo requires review: name the reviewer to ask. A force-push after an approval dismisses it; say it needs approval again ("재승인 필요").
+- `reviewDecision` is not `APPROVED` while the repo requires review: name the reviewer to ask. A force-push after an approval dismisses it; say it needs approval again ("Needs approval again").
 - A required check shown as `CANCELLED` blocks the merge even when another run of the same check passed (CI ran twice and one run was cancelled). Re-run it: `gh run rerun <run-id>`.
 - `deleteBranchOnMerge: true`: GitHub deletes the head branch at merge time no matter which flags you pass, so the stack steps below cannot keep it. Tell the developer before the first stacked merge and offer to have the setting turned off while the stack exists. If it stays on, check every child right after the merge with `gh pr view <child> --json state,baseRefName`; a child that closed is rebased as in step 3 and reopened as a new PR from the same branch (`gh pr create --base main`), with the new number in `state.js` and on its sidebar card.
 
-The approval message leads with the PR link and the walkthrough link (`file://<hub>/walkthrough.html?w=<item's walkthrough>`), then lists under a heading for code changed after the walkthrough approval ("워크스루 승인 뒤 바뀐 코드") the `changes` of every walkthrough round after `walkApproved` (CI fixes, conflict resolutions, review fixes, each with its `file:line`: [walkthrough.md](walkthrough.md), "Changes after the approval"; "none" ("없음") when `walkthrough` equals `walkApproved`), any `sinceWalk` entries an upgraded item still carries, and every `overruled` finding with your reason. The dashboard lists the item under "병합 승인" ("Merge") by itself once it is `ready` on `main`.
+The approval message leads with the PR link and the walkthrough link (`file://<hub>/walkthrough.html?w=<item's walkthrough>`), then lists under a heading for code changed after the walkthrough approval ("Code changed after the walkthrough approval") the `changes` of every walkthrough round after `walkApproved` (CI fixes, conflict resolutions, review fixes, each with its `file:line`: [walkthrough.md](walkthrough.md), "Changes after the approval"; "None" when `walkthrough` equals `walkApproved`), any `sinceWalk` entries an upgraded item still carries, and every `overruled` finding with your reason. The dashboard lists the item under "Merge" by itself once it is `ready` on `main`.
 
 ## Approval
 
-Only an explicit approval that names the items counts: "W1 병합해", choosing W1 in a question, or "다 병합해" (merge all) in answer to a message that listed the items; the same intent in any language counts. "다 병합해" covers exactly the items listed in the approval message it answers, never an item that became ready after it. "좋네요", silence, or approval given before the preflight facts were shown is not approval: ask. An item whose hash changed after the approval (an `update-branch` that touched its own lines, a new review fix), or that gained a walkthrough round the approval message did not list, needs a new approval.
+Only an explicit approval that names the items counts: "merge W1", choosing W1 in a question, or "merge all" in answer to a message that listed the items; the same intent in any language counts. "merge all" covers exactly the items listed in the approval message it answers, never an item that became ready after it. "looks good", silence, or approval given before the preflight facts were shown is not approval: ask. An item whose hash changed after the approval (an `update-branch` that touched its own lines, a new review fix), or that gained a walkthrough round the approval message did not list, needs a new approval.
 
-An approval that carries a comment ("W1 병합해, 근데 함수 이름은 바꿔줘") is read by what the comment asks for, and the comment is never dropped:
+An approval that carries a comment ("merge W1, but rename the function") is read by what the comment asks for, and the comment is never dropped:
 
 - A change to this PR before it merges, or you cannot tell whether they mean now or later: it is not an approval. Set the item `pr`, phases 6, and `send` the worker `CHANGES: <each change, with file:line>` (protocol rule 6c); the changed lines get a walkthrough round and a review ([walkthrough.md](walkthrough.md), "Changes after the approval"), and you ask again.
-- Work for later ("다음 PR에서", "나중에"): the approval counts. Log the comment in their words and list it under follow-ups in the final report ([cleanup.md](cleanup.md)).
+- Work for later ("in the next PR", "later"): the approval counts. Log the comment in their words and list it under follow-ups in the final report ([cleanup.md](cleanup.md)).
 - A question: answer it from the code, then ask for the approval again.
 
 ## At High

@@ -2,7 +2,7 @@
 
 Every worker gets one file: `<hub>/specs/<item-id>.md` = the task part below + the full `<hub>/protocol.md`. Pass it with `--spec-file`. On the Claude app, write both with the changes in [claude-app.md](claude-app.md), "Protocol on the Claude app". Workers do not see your conversation, the dashboard, or earlier workers' chats: everything they need is in this file or in repo paths it names.
 
-Korean strings in this file are examples for a Korean-speaking developer: write the same meaning in the developer's language ([SKILL.md](../SKILL.md), "Language").
+Quoted strings in this file are examples, in English: write the same meaning in the developer's language ([SKILL.md](../SKILL.md), "Language").
 
 ## protocol.md (write once per hub, append to every spec)
 
@@ -35,7 +35,7 @@ After the block, append the walkthrough template (the `js` block in [walkthrough
 7. STATUS at each checkpoint, then keep working:
    `orca orchestration send --type status --phase <red|green|verified|pr-open|ci-green> --subject "<item-id>: <phase>" --body "SUMMARY: <one sentence>
 <2-4 lines: done, next, blockers>"`
-   The SUMMARY line goes on the item's dashboard card as it is, so <the developer> reads it with no other context: one plain sentence in <the developer's language> saying what this PR does so far, in terms of the outcome ("야간 시간대를 판정하는 함수를 만들었고 시험 6건이 통과합니다"), with no protocol word, hash, or file path. Your worker_done body starts with one too.
+   The SUMMARY line goes on the item's dashboard card as it is, so <the developer> reads it with no other context: one plain sentence in <the developer's language> saying what this PR does so far, in terms of the outcome ("The function that decides night hours is written and 6 tests pass"), with no protocol word, hash, or file path. Your worker_done body starts with one too.
    `red` carries the red evidence; `verified` carries the verification summary; `pr-open` carries the PR URL.
    <Keep this sentence only when the developer approves permission prompts in worker terminals (standing choice); otherwise delete it:> At low, right before `git push` and `gh pr create`, send `--phase approval` with the command you are about to run: <the developer> approves those prompts in your terminal and needs to know you are waiting.
 8. DECISIONS. Product or planning questions (limits, prices, wording, flows, who sees what) and contract conflicts with other owners: do not guess. `orca orchestration ask --question "<item-id>: <background 2-3 lines; options with impact; your recommendation; what is blocked>"`, then end your turn; Orca wakes you with the answer. Work on unaffected parts first. Technical choices the repo's rules answer are yours; say which rule you followed in the PR body.

@@ -4,7 +4,7 @@ Read this before you start a worker: in step 6, for each later item, and for a w
 
 You choose the model and the reasoning effort for each item yourself, when you start its worker. Do not ask the developer, and do not leave the choice to the worker. If the developer names a model or an effort, for the run or for one item, use what they named and record it as an `answered` decision (and in `spec.md` when it is for the run); that is the only thing that overrides this file. A model that an older hub's standing choices listed as a default and the developer only kept is not one they named: choose by this file.
 
-Korean strings in this file are examples for a Korean-speaking developer: write the same meaning in the developer's language ([SKILL.md](../SKILL.md), "Language").
+Quoted strings in this file are examples, in English: write the same meaning in the developer's language ([SKILL.md](../SKILL.md), "Language").
 
 ## What the agent offers
 
@@ -51,4 +51,4 @@ A reviewer you start as an Orca worker ([review.md](review.md), "Who") gets a mo
 - Pass both flags to `worker-start`: `--model <model> --effort <effort>`. Orca refuses `--effort` without `--model`, and refuses a level the model does not support; when it refuses the level, use the nearest level it accepts toward `high`.
 - On the Claude app, set `model` in `start_session`, and the effort only when the tool has a field for it. Without one the worker runs at the app's effort, a step up is a model step, and a step down is a model step for a mechanical or docs-only item and the baseline for any other.
 - Write `model` and `effort` into the item's `workers` row in `state.js`, with the receipt.
-- Log a choice that is not the baseline with its reason, in the worker-start line: "N1 작업자를 한 단계 높은 effort(xhigh)로 시작했습니다: 마이그레이션". List these choices in the final report ([cleanup.md](cleanup.md)).
+- Log a choice that is not the baseline with its reason, in the worker-start line: "Started the N1 worker one effort level up (xhigh): migration". List these choices in the final report ([cleanup.md](cleanup.md)).

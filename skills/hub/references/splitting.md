@@ -2,7 +2,7 @@
 
 Read this before you plan items, and again when a worker reports a diff over its budget. The repo's own PR rules (a PR workflow skill, CONTRIBUTING, `AGENTS.md`) come first where they are stricter.
 
-Korean strings in this file are examples for a Korean-speaking developer: write the same meaning in the developer's language ([SKILL.md](../SKILL.md), "Language").
+Quoted strings in this file are examples, in English: write the same meaning in the developer's language ([SKILL.md](../SKILL.md), "Language").
 
 ## One PR is one unit
 
@@ -55,7 +55,7 @@ Walk the user's flow end to end (data → logic → API → screen → operation
 Speed comes first: run as many workers as there are items that can go in parallel without overlapping, because each independent lane that waits is time lost. Overlap, not the developer's reading pace, is what makes parallel work expensive: two workers touching the same files or the same flow pay for it in conflicts, rebases, and new review rounds.
 
 - **The cap** (`workerCap`) is the number of items that can start now and are independent of each other (the rules above: no unmerged dependency beyond one green parent, no shared file, stacks at most two deep), limited only by what the machine and CI hold: workers whose checks run at the same time without timing out or queueing for long. Propose it with the standing choices (SKILL.md, step 3; estimate the independent items from the spec, and correct it after the plan in step 4 in your next message) and let the developer set it. Without an answer, use that number, at most 4.
-- **Backpressure.** Count the items waiting for the developer: status `walk`, plus `ready` items on `main` (the 워크스루 승인 and 병합 승인 rows of the dashboard's to-do list; English: Walkthrough and Merge). When that count reaches the cap, start no new worker; log once that new workers wait for n items the developer must check ("새 작업자 보류: 개발자 확인 대기 <n>건"). Workers already running carry on. Start the next item when the count drops below the cap. Below that, waiting items never hold back an independent item.
+- **Backpressure.** Count the items waiting for the developer: status `walk`, plus `ready` items on `main` (the Walkthrough and Merge rows of the dashboard's to-do list). When that count reaches the cap, start no new worker; log once that new workers wait for n items the developer must check ("New workers held: <n> items wait for the developer"). Workers already running carry on. Start the next item when the count drops below the cap. Below that, waiting items never hold back an independent item.
 - **Adjusting.** At a checkpoint message, propose a change, and change `workerCap` only when the developer agrees:
   - up when an independent item is held only by the cap and the machine and CI keep up (no check timing out, no long CI queue);
   - down when running items keep conflicting (two rebases in a row that resolved conflicts between them: they were not independent, so re-cut them), or when checks start timing out or queueing.
@@ -66,18 +66,18 @@ Speed comes first: run as many workers as there are items that can go in paralle
 - When one item feeds several, put it at the end of its own lane and list it in the dependent items' `after` (`after: ["N3"]`): the page links each dependent card to it.
 - Each item: `id` (ASCII letters, digits, `-`, `_`: the walkthrough link and file names need it), `title` (the outcome sentence), `base`, `risk` (the risky area in the developer's words), `ext` (what it waits for, as one short sentence: [dashboard.md](dashboard.md)).
 - Each item names the `spec.md` lines it implements (completion criteria, test scenarios). Every completion criterion belongs to some item; one that belongs to none is a missing item.
-- `flowSummary`: the lanes in the order they unblock each other, for example "선행 병합 → 기반 레인 → 화면 레인". The page shows it after the 개발 흐름 (Work flow) heading.
+- `flowSummary`: the lanes in the order they unblock each other, for example "Earlier merges → Base lane → UI lane". The page shows it after the Work flow heading.
 
 ## Example
 
-Feature "찜하기" (save products to a wishlist), with a shared price formatter that has to move:
+Feature "Wishlist" (save products to a wishlist), with a shared price formatter that has to move:
 
 | Lane | Item | Outcome (title) | Base | Risk |
 |---|---|---|---|---|
-| 준비 | W0 | 가격 표시 함수를 공용 패키지로 옮긴다 (mechanical, 24 files) | main | |
-| 기반 | W1 | 찜 목록 표를 추가한다 | main | 마이그레이션 |
-| 기반 | W2 | 찜 추가·취소·목록 규칙을 서비스로 만든다 | W1's branch, stacked once W1 has green CI | 동시성 |
-| 기반 | W3 | 찜 API 를 연다(클라이언트 재생성 포함) | W2's branch once W1 merged (two deep at most) | |
-| 화면 | W4 | 상품 화면에 찜 버튼과 내 찜 목록 화면을 붙인다 | main after W3 and W0 merge | |
+| Prep | W0 | Move the price formatter into the shared package (mechanical, 24 files) | main | |
+| Base | W1 | Add the wishlist table | main | migration |
+| Base | W2 | Build the rules for adding, removing, and listing wishlist items as a service | W1's branch, stacked once W1 has green CI | concurrency |
+| Base | W3 | Expose the wishlist API (with the client regenerated) | W2's branch once W1 merged (two deep at most) | |
+| UI | W4 | Add the wishlist button to the product screen and the My wishlist screen | main after W3 and W0 merge | |
 
 W0 and W1 start together (cap 2: two independent items can start; W2 waits for W1). W4 waits for two parents, so it waits for both to merge instead of stacking.

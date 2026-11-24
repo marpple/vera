@@ -2,7 +2,7 @@
 
 Read this first when the hub runs in the Claude desktop app (`runtime: "claude-app"`, [SKILL.md](../SKILL.md), "Runtime"). The rest of the skill is written for Orca. In the app, every rule, step, and check in it holds unchanged; only the Orca commands are replaced by the app's own tools, as this file says. Where this file names a step or a section, do what it says instead of the Orca command there.
 
-Korean strings in this file are examples for a Korean-speaking developer: write the same meaning in the developer's language ([SKILL.md](../SKILL.md), "Language").
+Quoted strings in this file are examples, in English: write the same meaning in the developer's language ([SKILL.md](../SKILL.md), "Language").
 
 ## What differs, at a glance
 
@@ -47,7 +47,7 @@ In SKILL.md step 6, in place of `orca orchestration worker-start` and the `orca 
 | `model` | the alias you choose for this item ([worker-model.md](worker-model.md)); omit it only when the lookup there failed, to use the hub's model. The tool has no effort field here: that file says what a step is without one |
 | `permission_mode` | omit it: the worker inherits the hub's mode. A worker in another mode holds the hub's messages for approval |
 
-**Which turns can start a worker.** The app refuses `start_session` in a turn that another session's message started (a worker's VERA message, or a `<side-sessions-event>` that does not follow the developer's own turn) and offers a proposal card instead. So start workers only in a turn the developer started: step 6 on a new hub, a resume, or any turn where the developer answered or asked something. When a worker's message frees a slot (a `worker_done`, a merge approval you handled in that turn), do not call `start_session` and do not propose a card: set each item that can now start to `ext` "다음에 말씀하시면 시작합니다", add one to-do to `ask` saying that any reply to the hub starts it ("허브에 아무 말이나 답하시면 N3 를 시작합니다"), and start it in the developer's next turn. A refusal in a turn you thought was the developer's means the same: leave the item waiting as above, never retry in a loop.
+**Which turns can start a worker.** The app refuses `start_session` in a turn that another session's message started (a worker's VERA message, or a `<side-sessions-event>` that does not follow the developer's own turn) and offers a proposal card instead. So start workers only in a turn the developer started: step 6 on a new hub, a resume, or any turn where the developer answered or asked something. When a worker's message frees a slot (a `worker_done`, a merge approval you handled in that turn), do not call `start_session` and do not propose a card: set each item that can now start to `ext` "Starts at your next message", add one to-do to `ask` saying that any reply to the hub starts it ("Reply anything to the hub and N3 starts"), and start it in the developer's next turn. A refusal in a turn you thought was the developer's means the same: leave the item waiting as above, never retry in a loop.
 
 The result gives the worker's session id. `mcp__ccd_session_mgmt__get_session` on that id gives its worktree path. Write `session`, `path`, and the item's `branch` into its `workers` row before you start the next worker. At `medium` or `high`, run `allow.cjs write <its path> <level>` right after the receipt: the app creates the worktree as the session starts, so the list cannot exist before it, and a worker that still prompts is answered by the developer as at `low`.
 
@@ -92,7 +92,7 @@ The app tells the hub when the sessions it started have all ended their turns (a
 
 - In SKILL.md step 5, in place of the five sidebar sub-steps: rename this session to `<Hub> · <feature>` with `mcp__ccd_session_mgmt__set_session_title` (`"self"`), after recording `hubOldTitle`. If the old title already has a hub's `<Hub> · <feature>` form, ask the developer which title to give back and store their answer. Workers you start nest under this session by themselves, so the run is already one tree; `hubWorktree`, `hubWorktreeOldName`, and `hubWorktreeOldNameMode` stay "".
 - On resume, in place of the sidebar bullet: rename this session again when its title differs from `<Hub> · <feature>`; record nothing.
-- After every event, in place of the two `orca worktree set` bullets: set each live worker's title to `<id> · <short title> · <stage word>` (작업 중, 리뷰 중, 워크스루 대기, PR 열림, 병합 준비, 병합됨) with `set_session_title`, and mark the hub's session unread with `mcp__ccd_sidebar__set_unread` (`"self"`, `true`) when `ask` is not empty, read (`false`) when it is.
+- After every event, in place of the two `orca worktree set` bullets: set each live worker's title to `<id> · <short title> · <stage word>` (Working, In review, Walkthrough waiting, PR open, Ready to merge, Merged) with `set_session_title`, and mark the hub's session unread with `mcp__ccd_sidebar__set_unread` (`"self"`, `true`) when `ask` is not empty, read (`false`) when it is.
 
 ## Pages
 
@@ -103,7 +103,7 @@ The app's browser pane shows a `file://` page outside the project only as a stat
 In [cleanup.md](cleanup.md), "Cleaning up an item":
 
 - Step 1: `stop_session` on its session if it is still working. Do not archive it yet.
-- Step 4: only after step 3 saved the changes, `mcp__ccd_session_mgmt__archive_session` on its session (with a reason such as "PR #41 병합"); it stops the session and removes its worktree. Read its result: when it says the session was not archived (still working, pinned, open on screen, or declined), leave the worktree, log the reason, and tell the developer; never remove the worktree of a session that is still live. Only when it archived and `git -C <repo path> worktree list` still shows the path, run `git -C <repo path> worktree remove <path>`.
+- Step 4: only after step 3 saved the changes, `mcp__ccd_session_mgmt__archive_session` on its session (with a reason such as "PR #41 merged"); it stops the session and removes its worktree. Read its result: when it says the session was not archived (still working, pinned, open on screen, or declined), leave the worktree, log the reason, and tell the developer; never remove the worktree of a session that is still live. Only when it archived and `git -C <repo path> worktree list` still shows the path, run `git -C <repo path> worktree remove <path>`.
 - Step 5: archiving keeps the local branch, as `orca worktree rm` does. `<repo path>` is the main checkout: `dirname "$(git -C <any worktree> rev-parse --path-format=absolute --git-common-dir)"`.
 
 In "Closing the hub", step 1 checks `list_sessions` and `git worktree list` in place of the Orca lists, and step 3 gives this session `hubOldTitle` back with `set_session_title` and marks it read, in place of the `orca worktree set` commands. Never archive the hub's own session.
