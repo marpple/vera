@@ -11,7 +11,7 @@ Vera is a set of agent skills shipped as one plugin for Claude Code and Codex. T
 
 Three folders have their own guide, with a table of the files in them: `skills/AGENTS.md`, `tests/AGENTS.md`, and `.github/AGENTS.md`. Read the one for the folder you work in. There is none below `skills/hub/`, because what is in that folder is installed on users' machines.
 
-- `skills/hub/SKILL.md` and `skills/hub/references/`: what the hub agent follows. Write them in English; a Korean string in a reference is an example, and that file says so.
+- `skills/hub/SKILL.md` and `skills/hub/references/`: what the hub agent follows. Write them in English, examples included; the `ko` label tables in `skills/hub/templates/` are the Korean locale.
 - `skills/hub/templates/`: files the hub copies into each hub folder. It never edits them there, except `state.js`, which it fills once and then edits after every event. When you add, rename, or remove a template, update all four copy lists: the hub folder table, "Resume", and step 5 "Build the folder" in `skills/hub/SKILL.md`, and step 1 of the second part of `skills/hub/references/upgrade.md`. Only step 5 copies `state.js`: copying it on a resume would overwrite the hub's live state. A list that misses a template leaves resumed hubs on the old copy. `tests/template-copies.test.cjs` fails when a list differs from the folder.
 - `skills/hub/scripts/`: scripts the hub runs from this skill's folder, never copied.
 - The worker protocol: the parts of `skills/hub/references/` that `skills/hub/scripts/protocolhash.cjs` hashes. A hub that resumes after one of them changed sends the new text to its live workers, so write each rule to hold for a worker that started under the old one.

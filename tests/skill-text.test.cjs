@@ -8,8 +8,8 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const skillDir = path.join(root, "skills", "hub");
 const refDir = path.join(skillDir, "references");
-const HANGUL = /[가-힣]/;
-const EXAMPLE_NOTE = "Korean strings in this file are examples";
+const HANGUL = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/;
+const EXAMPLE_NOTE = "Quoted strings in this file are examples, in English";
 
 function read(file) {
   return fs.readFileSync(file, "utf8");
@@ -80,11 +80,32 @@ test("SKILL.md has the language section and it names lang", () => {
   assert.match(section[1], /"en"/);
 });
 
-test("each reference with Korean text says its Korean strings are examples", () => {
-  const lacking = docs()
-    .filter((f) => HANGUL.test(read(f)) && !read(f).includes(EXAMPLE_NOTE))
-    .map((f) => path.relative(root, f));
-  assert.deepStrictEqual(lacking, []);
+// The skill is written for developers everywhere: its examples are English, and Korean lives only in the pages' ko tables.
+test("SKILL.md and the references hold no Hangul, and say their quoted strings are English examples", () => {
+  const withHangul = docs().filter((f) => HANGUL.test(read(f))).map((f) => path.relative(root, f));
+  assert.deepStrictEqual(withHangul, []);
+  const language = read(path.join(skillDir, "SKILL.md")).match(/\n## Language\n([\s\S]*?)(?=\n## )/)[1];
+  assert.ok(language.includes(EXAMPLE_NOTE), "the Language section does not say the quoted strings are English examples");
+  assert.match(language, /`ko` tables/, "the Language section does not say where the Korean labels are");
+  const quoting = fs.readdirSync(refDir).filter((n) => n.endsWith(".md")).filter((n) => !read(path.join(refDir, n)).includes(EXAMPLE_NOTE));
+  assert.deepStrictEqual(quoting, [], "every reference carries the note on its example strings");
+});
+
+test("a new hub's sample state.js is in English", () => {
+  const src = read(path.join(skillDir, "templates", "state.js"));
+  assert.doesNotMatch(src, HANGUL, "Hangul in templates/state.js");
+  const sandbox = { window: {} };
+  require("node:vm").runInNewContext(src, sandbox);
+  assert.strictEqual(sandbox.window.HUB_STATE.lang, "en");
+});
+
+test("a state.js without lang still renders in Korean, and the hub writes ko for a Korean-speaking developer", () => {
+  const language = read(path.join(skillDir, "SKILL.md")).match(/\n## Language\n([\s\S]*?)(?=\n## )/)[1];
+  assert.match(language, /`"ko"` when the developer writes Korean, `"en"` for any other language/);
+  assert.match(language, /a `state\.js` without it renders in Korean/);
+  for (const page of ["dashboard.html", "walkthrough.html"]) {
+    assert.match(read(path.join(skillDir, "templates", page)), /HUB_STATE\.lang picks one \("ko" when absent or unknown\)/, page);
+  }
 });
 
 test("the frontmatter parses, keeps the skill direct-invocation only, and is language-neutral", () => {
@@ -105,10 +126,14 @@ test("the protocol slots the language section names exist in worker-spec.md", ()
   assert.deepStrictEqual(slots.filter((s) => !spec.includes(s)), []);
 });
 
-test("dashboard.md's Korean stage words are the page's ko phase labels", () => {
+test("dashboard.md's stage words are the page's en phase and stage labels", () => {
   const html = read(path.join(skillDir, "templates", "dashboard.html"));
-  const ko = JSON.parse(html.match(/ko: \{[\s\S]*?phases: (\[[^\]]*\])/)[1]);
-  assert.ok(read(path.join(refDir, "dashboard.md")).includes(`stages**: ${ko.join(", ")} (English`));
+  const doc = read(path.join(refDir, "dashboard.md"));
+  const en = html.slice(html.indexOf("\n  en: {"));
+  const phases = JSON.parse(en.match(/phases: (\[[^\]]*\])/)[1]);
+  assert.ok(doc.includes(`stages**: ${phases.join(", ")} (the \`ko\` table`), "the phase labels");
+  const stage = [...en.match(/stage: \{([^}]*)\}/)[1].matchAll(/: "([^"]*)"/g)].map((m) => m[1]);
+  assert.ok(doc.includes(`${stage.join(" → ")} (the \`ko\` table`), "the stage strip labels");
 });
 
 const STOP_LIST = ["drops a column or table", "spending money", "secrets or permission scopes",

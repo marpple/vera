@@ -2,13 +2,13 @@
 
 Read this when a worker asks "ready for review", when a review passes, and whenever a PR's lines change after the developer approved them. No PR is opened until an independent reviewer has passed the code and the developer has understood and approved it. The developer owns the code that merges; the walkthrough is where they build their picture of each PR, so it stays reachable from the dashboard and stays true to the code until the merge. Every item gets one, mechanical ones included, whatever the standing choices say about merges.
 
-Korean strings in this file are examples for a Korean-speaking developer: write the same meaning in the developer's language ([SKILL.md](../SKILL.md), "Language").
+Quoted strings in this file are examples, in English: write the same meaning in the developer's language ([SKILL.md](../SKILL.md), "Language").
 
 ## What the worker hands you
 
 After its checks pass (protocol rule 5) the worker commits locally, does not push, writes `<hub>/walkthroughs/<item-id>-w<n>.js` in the shape below, runs `node <hub>/walkcheck.cjs` on it until it prints `ok`, sends `ask` "ready for review", and ends its turn. Its worktree holds exactly the commits that will be pushed.
 
-The file is data for `<hub>/walkthrough.html`, a fixed page that holds the same design rules as the dashboard ([dashboard.md](dashboard.md), "Design rules the pages hold"), and whose sentences you and the worker write by that file's "Sentences": a header line, the outcome as the title, what the developer should do now, four numbers, then seven steps (the page's Korean labels: 목적과 의도 → 구조 → 실행 흐름 → 구현 방식 → 시험 → 위험과 리뷰 → 질의응답; English: Purpose → Structure → Execution flow → How it is built → Tests → Risks and review → Q&A), one per screen with Back and Next. Step 1 also shows where the PR sits among the feature's items (from `state.js`), step 2 draws the `map`, step 3 shows each flow step's code with its real line numbers, step 4 shows each file's diff (from `<item-id>-w<n>.diff.js`, which walkcheck writes), and step 6 shows the independent review. The page re-reads its files every 5 s, so what you add appears while the developer reads. Never hand-write HTML for a walkthrough: write the data, and the page stays the same for every item and round.
+The file is data for `<hub>/walkthrough.html`, a fixed page that holds the same design rules as the dashboard ([dashboard.md](dashboard.md), "Design rules the pages hold"), and whose sentences you and the worker write by that file's "Sentences": a header line, the outcome as the title, what the developer should do now, four numbers, then seven steps (the page's labels: Purpose → Structure → Execution flow → How it is built → Tests → Risks and review → Q&A; the `ko` table in `templates/walkthrough.html` has the Korean ones), one per screen with Back and Next. Step 1 also shows where the PR sits among the feature's items (from `state.js`), step 2 draws the `map`, step 3 shows each flow step's code with its real line numbers, step 4 shows each file's diff (from `<item-id>-w<n>.diff.js`, which walkcheck writes), and step 6 shows the independent review. The page re-reads its files every 5 s, so what you add appears while the developer reads. Never hand-write HTML for a walkthrough: write the data, and the page stays the same for every item and round.
 
 ```js
 /* <hub>/walkthroughs/<item-id>-w<n>.js. The page runs this file as a script, so it must be plain data: exactly
@@ -22,7 +22,7 @@ The file is data for `<hub>/walkthrough.html`, a fixed page that holds the same 
    phrases. Every file:line and code matches the committed head: walkcheck.cjs compares them line by line. */
 window.HUB_WALK = {
   item: "<item-id>", round: <n>, title: "<the outcome sentence>",
-  owner: "<state.js owner>", worker: "<'worker' in the developer's language, e.g. 작업자> <item-id>", date: "<YYYY-MM-DD>",
+  owner: "<state.js owner>", worker: "<'worker' in the developer's language, e.g. Worker> <item-id>", date: "<YYYY-MM-DD>",
   head: "<short sha, local>", base: "<base branch>", baseSha: "<short sha>", branch: "<branch>",
   kind: "<behaviour | mechanical | schema | docs>",
   changes: [ /* round 2 and later: each change since the previous round */
@@ -35,7 +35,7 @@ window.HUB_WALK = {
     notHere: [ { item: "<item-id>", what: "<what that PR does instead>" } ]
   },
   map: { // the modules this PR touches and their direct neighbours, top layer first; the page draws it
-    layers: [ "<layer names in the repo's own words, e.g. 화면, API, 서비스, 저장소>" ],
+    layers: [ "<layer names in the repo's own words, e.g. UI, API, service, repository>" ],
     nodes: [ { id: "<short ascii id>", label: "<what it is, a few words>", layer: "<one of layers>",
                file: "<repo path, optional for existing ones>", state: "<new | changed | existing>" } ],
     links: [ { from: "<node id>", to: "<node id>", label: "<what passes or why it calls, a few words>" } ]
@@ -61,7 +61,7 @@ window.HUB_WALK = {
   qa: [ /* { q, a, refs: ["file:line"] }: the hub and the worker append here, newest last; a new round copies the previous round's */ ],
   review: [ /* the hub writes this, never the worker: { round, verdict, head, findings: [ { level, file, line, what, fix } ] } */ ]
 };
-/* Kind mechanical: flow is [] (the page says "동작 변화 없음", its Korean label) and map may be {}; design says what moved where and how to check nothing
+/* Kind mechanical: flow is [] (the page says "No change in behaviour") and map may be {}; design says what moved where and how to check nothing
    else changed (`git diff -M --stat`); tests is the suite before and after. Kind schema: flow is what each new table or
    column stores and who will write it. Kind docs: purpose and files only. Kinds behaviour and schema need map.nodes. */
 ```
@@ -81,11 +81,11 @@ Clean: start the independent review ([review.md](review.md)). The developer sees
 
 As soon as the review passes ([review.md](review.md), "After the verdict"), open the page (`orca tab create --url "file://<hub>/walkthrough.html?w=<id>-w<n>#1" --json`) and read it as the developer would: the first screen says what this is and what to do; every heading and label is a plain sentence a colleague would say; no text runs past 2 lines; every flow step says what happens, not which function is called; the map shows each changed module once; nothing spills out of its box. Unclear text goes back as `FIX-DOC` (wording only: the worker changes no fact the reviewer checked; run walkcheck again when it returns).
 
-Then, still right after the review, set the item's `walkthrough` to `<id>-w<n>` (the dashboard links it from now on, in every status), the item `walk` (the dashboard shows "워크스루 대기", English "Walkthrough waiting", in red), and its `workers` row state to the same label in the developer's language. At `medium` and `high` ([SKILL.md](../SKILL.md), "Autonomy levels") the developer is not waited for: right after this check, do "The answer", "Approved" yourself (the hash check, `walkDiff`, `walkApproved`, the reply) and log it; the walkthrough stays linked for the merge approval (`medium`) or the final report (`high`), and questions about it are answered as below. At `low` the conversation follows, one item per message, oldest first when several wait:
+Then, still right after the review, set the item's `walkthrough` to `<id>-w<n>` (the dashboard links it from now on, in every status), the item `walk` (the dashboard shows "Walkthrough waiting" in red), and its `workers` row state to the same label in the developer's language. At `medium` and `high` ([SKILL.md](../SKILL.md), "Autonomy levels") the developer is not waited for: right after this check, do "The answer", "Approved" yourself (the hash check, `walkDiff`, `walkApproved`, the reply) and log it; the walkthrough stays linked for the merge approval (`medium`) or the final report (`high`), and questions about it are answered as below. At `low` the conversation follows, one item per message, oldest first when several wait:
 
 1. Lead your message with the item id, the outcome sentence, and the page URL.
-2. Walk the developer through the seven steps in order, naming the step they should look at ("3단계 실행 흐름의 3번 노드"): purpose and intent and where this PR sits, then the structure map, then the execution flow node by node with each `file:line`, then how it was built and why, then which tests prove which spec line, then the risks and what the reviewer found. Your message adds what the page cannot: how the pieces connect and why. Do not paste the page back into the chat.
-3. Ask (AskUserQuestion, or a numbered list on a runtime without it), in the developer's language: approve and open the PR · I have a question · something needs a fix · park it (**PR 올려 (승인)** · **질문이 있다** · **고쳐야 할 곳이 있다** · **보류**).
+2. Walk the developer through the seven steps in order, naming the step they should look at ("node 3 of step 3, Execution flow"): purpose and intent and where this PR sits, then the structure map, then the execution flow node by node with each `file:line`, then how it was built and why, then which tests prove which spec line, then the risks and what the reviewer found. Your message adds what the page cannot: how the pieces connect and why. Do not paste the page back into the chat.
+3. Ask (AskUserQuestion, or a numbered list on a runtime without it), in the developer's language: approve and open the PR · I have a question · something needs a fix · park it (**Open the PR (approve)** · **I have a question** · **Something needs a fix** · **Park it**).
 
 ## Questions and answers
 
@@ -93,16 +93,16 @@ The developer may ask as many questions as they need, in any order, before the a
 
 - Answer from the code: read the worktree, cite `file:line`, quote the lines. Run a command or a single test in the worktree when that answers it better than reading (read-only: no edits, no commits).
 - A question only the worker can answer (why it chose X over Y): reply `QUESTION: <question>`. Once the walkthrough is approved, `send` it instead: the worker appends its answer to `qa` and reports "walkthrough answered" as a status, with no reply owed. Relay the answer.
-- Append each answer you gave yourself to `qa` (`{ q, a, refs }`; the worker appends its own): in a `node - <<'QA'` heredoc as in the template, load the file, push the entry, write it back with `JSON.stringify`. The open page shows it within 5 s, under 질의응답, so the record stays with the walkthrough.
+- Append each answer you gave yourself to `qa` (`{ q, a, refs }`; the worker appends its own): in a `node - <<'QA'` heredoc as in the template, load the file, push the entry, write it back with `JSON.stringify`. The open page shows it within 5 s, under Q&A, so the record stays with the walkthrough.
 - A question that turns out to be a product decision goes through the decision flow (SKILL.md, `question` row); one that reveals a defect becomes a change request.
 
-After answering, ask the same four-way question again. Approval comes only from an explicit answer about this item ("PR 올려", "승인", choosing that option, or the same intent in any language). "좋네요", silence, or approval of a different item is not approval: ask. An approval that carries a comment is read as in [merging.md](merging.md), "Approval": a change they want now is **Changes** below, not **Approved**; work for later is logged as a follow-up and the approval counts; a question is answered first.
+After answering, ask the same four-way question again. Approval comes only from an explicit answer about this item ("open the PR", "approved", choosing that option, or the same intent in any language). "looks good", silence, or approval of a different item is not approval: ask. An approval that carries a comment is read as in [merging.md](merging.md), "Approval": a change they want now is **Changes** below, not **Approved**; work for later is logged as a follow-up and the approval counts; a question is answered first.
 
 ## The answer
 
 An answer that arrives while `askId` is empty (you replied `QUESTION:` and the worker's "walkthrough answered" has not arrived): record it in the log and reply to that next ask.
 
-- **Approved**: Compute the changed-lines hash ([review.md](review.md), "Changed-lines hash"): it must equal `reviewedDiff`; if it differs, the code moved after the review, so review again first. Record it as `walkDiff`, set `walkApproved` to `<id>-w<n>`, then reply (plus the item's `pendingRebase`, if a parent moved meanwhile: merging.md; clear the field once sent). No PR yet: reply `APPROVED: open the PR`; item `active`, phases 5, an `ext` saying the walkthrough is approved and the PR is being opened ("워크스루 승인, PR 생성 중"). PR already open: reply `APPROVED`; item `pr`, phases 6, and clear `walkPending` (its follow-up worker_done goes through SKILL.md, "After a green worker_done"). Log it with the head SHA. Without a PR the worker pushes and opens it (protocol rule 6d); the PR body carries the walkthrough's purpose and execution flow as Markdown (with `file:line`).
+- **Approved**: Compute the changed-lines hash ([review.md](review.md), "Changed-lines hash"): it must equal `reviewedDiff`; if it differs, the code moved after the review, so review again first. Record it as `walkDiff`, set `walkApproved` to `<id>-w<n>`, then reply (plus the item's `pendingRebase`, if a parent moved meanwhile: merging.md; clear the field once sent). No PR yet: reply `APPROVED: open the PR`; item `active`, phases 5, an `ext` saying the walkthrough is approved and the PR is being opened ("Walkthrough approved, opening the PR"). PR already open: reply `APPROVED`; item `pr`, phases 6, and clear `walkPending` (its follow-up worker_done goes through SKILL.md, "After a green worker_done"). Log it with the head SHA. Without a PR the worker pushes and opens it (protocol rule 6d); the PR body carries the walkthrough's purpose and execution flow as Markdown (with `file:line`).
 - **Changes**: reply `CHANGES: <each change, with file:line>`. Item `active`; phases 3 when no PR is open (an open PR keeps its phases: the changed code is verified and reviewed again either way). The worker changes the code test-first (rules 4-5), writes walkthrough round `n+1` with `changes` filled, and asks "ready for review" again; the changed code is reviewed again before you show the new round. Show only what changed, then ask again.
 - **Parked**: reply `PARKED`, then [cleanup.md](cleanup.md), "Parking or dropping an item".
 
@@ -113,7 +113,7 @@ The developer approved the code at `walkDiff`. Its lines can still change before
 At every `worker_done` of an item that has a `walkDiff`, compute the changed-lines hash at the pushed head:
 
 - **Equal to `reviewedDiff`**: nothing changed since the review and the approval (a rebase without a conflict keeps the hash).
-- **Different**: the report must name a new walkthrough round written at the pushed head, with `afterApproval: true` and every change in `changes` (`what`, `why`, `file`, `line`: protocol rule 6f). A report without it goes back to the worker. Check the round as in "Check it, then have it reviewed", sending `FIX-DOC` with `send` (there is no ask to reply to; the worker sends worker_done again) (its `review` and `qa` carry over: copy the previous round's `review` in when you write the new verdict), set `walkthrough` to it (the dashboard then marks the item "승인 뒤 변경", English "Changed after OK"), and have the changed code reviewed again (item `review`, phases back to 6 until it passes); while that review asks for fixes, the worker rewrites the same round, and a change after that round passed review is the next round. `walkApproved` stays at the round the developer approved.
+- **Different**: the report must name a new walkthrough round written at the pushed head, with `afterApproval: true` and every change in `changes` (`what`, `why`, `file`, `line`: protocol rule 6f). A report without it goes back to the worker. Check the round as in "Check it, then have it reviewed", sending `FIX-DOC` with `send` (there is no ask to reply to; the worker sends worker_done again) (its `review` and `qa` carry over: copy the previous round's `review` in when you write the new verdict), set `walkthrough` to it (the dashboard then marks the item "Changed after OK"), and have the changed code reviewed again (item `review`, phases back to 6 until it passes); while that review asks for fixes, the worker rewrites the same round, and a change after that round passed review is the next round. `walkApproved` stays at the round the developer approved.
 
 The merge approval message links the latest round and lists the `changes` of every round after `walkApproved` under the heading for code changed after the walkthrough approval ([merging.md](merging.md), "Preflight before asking for approval"), so the developer approves the merged code, not only the code they first read. A change the developer wants explained gets the same treatment as a walkthrough question.
 
