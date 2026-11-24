@@ -12,7 +12,7 @@ Write issues, pull requests, commits, and review comments in English.
 | 2. Branch | Branch from `origin/main`, or from your fork | One concern per pull request |
 | 3. Change and test | Make the change and run `node --test` | Every test passes |
 | 4. Pull request | Open it with the template filled | The `test (18)` and `test (26)` checks pass |
-| 5. Review | A maintainer who is not the author approves | Every review conversation is resolved |
+| 5. Review | Ask for one when the change is risky or you want a second reader | Every review conversation is resolved |
 | 6. Merge | A maintainer squash-merges it | The branch is up to date with `main` |
 
 ## 1. Open an issue first
@@ -51,11 +51,11 @@ node --test
 - A pull request that fixes an issue says `Closes #<number>` under "Issue".
 - Name no AI agent in commits or in the pull request.
 
-## 5. Get a review
+## 5. Review
 
-- One approval is required, from a maintainer who is not the author. Nobody is exempt, admins included.
-- A push after the approval dismisses it, and the pull request needs a new one.
+- An approval is not required to merge. Ask for a review when the change is risky or you want a second reader; the maintainer is requested automatically on every pull request.
 - Every review conversation must be resolved before the merge.
+- The checks and the other rules apply to everyone, admins included.
 
 ## 6. Merge
 

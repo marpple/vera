@@ -28,7 +28,7 @@ Vera is for users everywhere, so English is the language of the repo and of ever
 - Commit subjects and bodies, pull request titles and bodies, issues, review comments, and release notes.
 - The manifests in `.claude-plugin/`, and the repo's description and topics on GitHub.
 
-Another language belongs in the repo only as a locale the product supports or a test of one: the `ko` label tables in `skills/hub/templates/`, the fixtures and tests for them, and a string a skill file marks as an example of what a developer may type. Do not translate these away, and do not add a file written in another language.
+Another language belongs in the repo only as a locale the product supports or a test of one: the `ko` label tables in `skills/hub/templates/`, and the fixtures and tests for them. Do not translate these away, and do not add a file written in another language.
 
 ## Issues, branches, and review
 
@@ -37,7 +37,8 @@ The steps a person follows are in `CONTRIBUTING.md`. These are the rules, and Gi
 - **An issue first.** A bug, a wrong instruction, or a check that fails on `main` gets an issue from the bug form in `.github/ISSUE_TEMPLATE/` before the fix, and a new behaviour gets one from the feature form before the work. A change that needs no explaining, such as a typo, may go straight to a pull request that says so under its issue heading.
 - **A security problem is never a public issue.** Follow `SECURITY.md`.
 - **`main` takes no direct push.** Every change reaches it through a pull request from a branch.
-- **A pull request merges by squash only**, after one approval from a maintainer who is not its author, with `test (18)` and `test (26)` green, the branch up to date with `main`, and every review conversation resolved. A push after the approval dismisses it. Nobody bypasses this, admins included.
+- **A pull request merges by squash only**, with `test (18)` and `test (26)` green, the branch up to date with `main`, and every review conversation resolved. Nobody bypasses this, admins included.
+- **An approval is not required to merge.** Ask for a review when the change is risky or you want a second reader, and resolve what the reviewer raises before the merge.
 - **As an agent, never approve a pull request, and never merge one unless the developer asks you to in this conversation.** When a rule blocks a merge, say which one and stop: do not use `--admin`, change the ruleset, or push to `main` another way.
 - **Only a maintainer merges**: an MCO developer with write access. Anyone else opens a pull request from a fork.
 

@@ -43,8 +43,8 @@ test("the main ruleset on record is the one AGENTS.md describes", () => {
   const rule = (type) => ruleset.rules.find((r) => r.type === type);
   for (const type of ["deletion", "non_fast_forward", "required_linear_history"]) assert.ok(rule(type), `no ${type} rule`);
   const pr = rule("pull_request").parameters;
-  assert.strictEqual(pr.required_approving_review_count, 1);
-  assert.strictEqual(pr.dismiss_stale_reviews_on_push, true);
+  assert.strictEqual(pr.required_approving_review_count, 0, "a pull request is required; an approval is not");
+  assert.ok(read("AGENTS.md").includes("An approval is not required to merge"));
   assert.strictEqual(pr.required_review_thread_resolution, true);
   assert.deepStrictEqual(pr.allowed_merge_methods, ["squash"]);
   const checks = rule("required_status_checks").parameters;
