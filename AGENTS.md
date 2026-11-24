@@ -20,9 +20,21 @@ Vera is a set of agent skills shipped as one plugin for Claude Code and Codex. T
 
 Everything under `skills/` runs on someone else's machine: no absolute paths, user names, or local tools beyond the prerequisites in `README.md`. `tests/skill-text.test.cjs` checks for the common cases. `README.md` holds no Hangul.
 
+## Issues, branches, and review
+
+The steps a person follows are in `CONTRIBUTING.md`. These are the rules, and GitHub enforces the ones about `main` with the ruleset recorded in `.github/rulesets/main.json`.
+
+- **An issue first.** A bug, a wrong instruction, or a check that fails on `main` gets an issue from the bug form in `.github/ISSUE_TEMPLATE/` before the fix, and a new behaviour gets one from the feature form before the work. A change that needs no explaining, such as a typo, may go straight to a pull request that says so under its issue heading.
+- **A security problem is never a public issue.** Follow `SECURITY.md`.
+- **`main` takes no direct push.** Every change reaches it through a pull request from a branch.
+- **A pull request merges by squash only**, after one approval from an MCO developer who is not its author, with `test (18)` and `test (26)` green, the branch up to date with `main`, and every review conversation resolved. A push after the approval dismisses it. Nobody bypasses this, admins included.
+- **As an agent, never approve a pull request, and never merge one unless the developer asks you to in this conversation.** When a rule blocks a merge, say which one and stop: do not use `--admin`, change the ruleset, or push to `main` another way.
+- **Only an MCO developer with write access merges.** An outside contributor opens a pull request from a fork.
+
 ## Commits and pull requests
 
-- One concern per pull request, branched from `origin/main`. Pull requests are normally squash-merged, so the title becomes the commit subject on `main`.
+- One concern per pull request, branched from `origin/main`. The title becomes the commit subject on `main`.
 - Titles and commit subjects are English sentences in the imperative mood with no type prefix, such as "Refuse gh pr merge in a Claude worker's worktree". The commit body says what changed and why.
-- The pull request body has `## What` (the change and the reason, with a table when cases differ) and `## Verification` (the commands you ran and what they printed, such as the `node --test` count).
+- The pull request body fills `.github/PULL_REQUEST_TEMPLATE.md` in Korean, as issues are written in Korean: what changed and why (with a table when cases differ), the issue it closes as `Closes #<n>`, the verification (the commands you ran and what they printed, such as the `node --test` count), and the checklist.
 - Name no AI agent in commits or pull requests: no `Co-Authored-By` trailer for an agent and no "Generated with" line.
+- A merged release pull request is tagged and published by `.github/workflows/release.yml`: do not create the tag by hand.

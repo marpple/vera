@@ -1,0 +1,30 @@
+name: release
+
+# A merged release pull request changes `version` in plugin.json. This tags that
+# commit and publishes the GitHub release, unless the tag already exists.
+on:
+  push:
+    branches: [main]
+    paths: [".claude-plugin/plugin.json"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Tag and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(node -p 'require("./.claude-plugin/plugin.json").version')"
+          tag="v${version}"
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "${tag} already exists; nothing to release"
+            exit 0
+          fi
+          gh release create "${tag}" --target "${GITHUB_SHA}" --title "${version}" --generate-notes
