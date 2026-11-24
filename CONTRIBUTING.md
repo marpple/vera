@@ -1,66 +1,68 @@
-# Vera에 기여하기
+# Contributing to Vera
 
-Vera는 MCO 개발팀이 오픈 소스 방식으로 운영하는 저장소입니다. 이 문서는 문제를 발견했을 때부터 변경이 `main`에 병합될 때까지의 절차를 설명합니다. 에이전트가 따르는 저장소 규칙은 [AGENTS.md](AGENTS.md)에 있고, 두 문서가 다르면 `AGENTS.md`를 따릅니다.
+Vera is maintained by the development team at Marpple Corporation (MCO) and is open to everyone: issues and pull requests are welcome from any user. This page takes you from finding a problem to a change merged into `main`. The rules an agent follows are in [AGENTS.md](AGENTS.md); where the two differ, `AGENTS.md` holds.
 
-## 한눈에 보는 절차
+Write issues, pull requests, commits, and review comments in English.
 
-| 단계 | 하는 일 | 통과 조건 |
+## The steps at a glance
+
+| Step | What you do | What it takes to pass |
 |---|---|---|
-| 1. 이슈 | 문제나 제안을 [이슈](https://github.com/marpple/vera/issues/new/choose)로 등록합니다 | 양식의 필수 항목을 모두 채웁니다 |
-| 2. 브랜치 | `origin/main`에서 브랜치를 만듭니다 | PR 하나는 한 가지 관심사만 다룹니다 |
-| 3. 변경과 테스트 | 변경하고 `node --test`를 실행합니다 | 모든 테스트가 통과합니다 |
-| 4. PR | PR 양식을 채워서 엽니다 | `test (18)`, `test (26)` 체크가 통과합니다 |
-| 5. 리뷰 | 작성자가 아닌 MCO 개발자 1명이 승인합니다 | 리뷰 대화가 모두 해결됩니다 |
-| 6. 병합 | squash 방식으로 병합합니다 | 브랜치가 `main`의 최신 상태입니다 |
+| 1. Issue | Open an [issue](https://github.com/marpple/vera/issues/new/choose) for the problem or the proposal | Every required field of the form is filled |
+| 2. Branch | Branch from `origin/main`, or from your fork | One concern per pull request |
+| 3. Change and test | Make the change and run `node --test` | Every test passes |
+| 4. Pull request | Open it with the template filled | The `test (18)` and `test (26)` checks pass |
+| 5. Review | A maintainer who is not the author approves | Every review conversation is resolved |
+| 6. Merge | A maintainer squash-merges it | The branch is up to date with `main` |
 
-## 1. 문제를 발견하면 이슈부터 등록합니다
+## 1. Open an issue first
 
-- 버그, 잘못된 지침, `main`에서 실패하는 검사는 **버그 신고** 양식으로 등록합니다.
-- 새 동작이나 동작 변경은 작업을 시작하기 전에 **기능 제안** 양식으로 등록합니다.
-- 보안 취약점은 공개 이슈로 등록하지 않습니다. [SECURITY.md](SECURITY.md)의 절차를 따릅니다.
-- 오타 수정처럼 설명이 필요 없는 변경은 이슈 없이 PR을 바로 열어도 됩니다. 이 경우 PR의 "관련 이슈" 항목에 그 이유를 한 줄로 적습니다.
+- A bug, a wrong instruction, or a check that fails on `main`: the **Bug report** form.
+- A new behaviour or a change to one: the **Feature request** form, before you start the work.
+- A security vulnerability: never a public issue. Follow [SECURITY.md](SECURITY.md).
+- A change that needs no explaining, such as a typo, may go straight to a pull request. Say so under its "Issue" heading.
 
-## 2. 브랜치에서 작업합니다
+## 2. Work on a branch
 
-`main`은 보호되어 있어서 직접 push할 수 없습니다. 모든 변경은 브랜치와 PR을 거칩니다.
+`main` is protected and takes no direct push. Every change goes through a branch and a pull request.
 
 ```sh
 git fetch origin
-git switch -c <브랜치 이름> origin/main
+git switch -c <branch name> origin/main
 ```
 
-MCO 소속이 아닌 기여자는 저장소를 fork한 뒤 fork의 브랜치에서 PR을 엽니다.
+Without write access, fork the repo and open the pull request from a branch of your fork.
 
-## 3. 변경하고 테스트합니다
+## 3. Change and test
 
 ```sh
 node --test
 ```
 
-- 빌드 단계는 없습니다. CI는 같은 명령을 Node 18과 Node 26에서 실행합니다.
-- 테스트 중 상당수는 지침 문서의 문장을 직접 인용해서 검사합니다. 인용된 문장을 고쳤다면 같은 PR에서 테스트도 함께 고칩니다.
-- `skills/` 아래의 파일은 다른 사람의 컴퓨터에서 실행됩니다. 절대 경로, 사용자 이름, README의 준비물에 없는 도구를 넣지 않습니다.
-- `.claude-plugin/plugin.json`의 `version`은 릴리스 PR에서만 바꿉니다.
+- There is no build step. CI runs the same command on Node 18 and Node 26.
+- Many tests read the instruction text itself. When you reword a sentence a test quotes, change the test in the same pull request.
+- Everything under `skills/` runs on someone else's machine: no absolute paths, user names, or tools beyond the prerequisites in the README.
+- `version` in `.claude-plugin/plugin.json` changes only in a release pull request.
 
-## 4. PR을 엽니다
+## 4. Open the pull request
 
-- 제목은 명령형 영어 문장으로 쓰고, `feat:` 같은 접두사를 붙이지 않습니다. squash 병합되면 이 제목이 `main`의 커밋 제목이 됩니다.
-- 본문은 PR 양식의 네 항목(무엇을, 왜 / 관련 이슈 / 검증 / 확인 사항)을 한국어로 채웁니다.
-- 이슈를 해결하는 PR은 "관련 이슈"에 `Closes #<번호>`를 적습니다.
-- 커밋과 PR 본문에 AI 에이전트를 표기하지 않습니다.
+- The title is an English sentence in the imperative mood, with no type prefix such as `feat:`. After the squash merge it is the commit subject on `main`.
+- Fill the four headings of the template: What, Issue, Verification, Checklist.
+- A pull request that fixes an issue says `Closes #<number>` under "Issue".
+- Name no AI agent in commits or in the pull request.
 
-## 5. 리뷰를 받습니다
+## 5. Get a review
 
-- 작성자가 아닌 MCO 개발자 1명의 승인이 필요합니다. 관리자에게도 예외가 없습니다.
-- 승인 뒤에 새 커밋을 올리면 승인이 무효가 되고, 다시 승인을 받아야 합니다.
-- 리뷰 대화는 모두 해결 상태가 되어야 병합할 수 있습니다.
+- One approval is required, from a maintainer who is not the author. Nobody is exempt, admins included.
+- A push after the approval dismisses it, and the pull request needs a new one.
+- Every review conversation must be resolved before the merge.
 
-## 6. 병합합니다
+## 6. Merge
 
-- 병합은 저장소에 쓰기 권한이 있는 MCO 개발자만 할 수 있습니다.
-- 병합 방식은 squash 하나뿐입니다. 병합되면 브랜치는 자동으로 삭제됩니다.
-- 병합만으로는 사용자의 설치본이 바뀌지 않습니다. 사용자에게 변경을 전달하려면 [README의 Releasing](README.md#releasing) 절차대로 릴리스합니다.
+- Only a maintainer merges: an MCO developer with write access to this repo.
+- Squash is the only merge method, and the branch is deleted after the merge.
+- A merge alone does not reach anyone's install. Users get a change through a release: see [Releasing](README.md#releasing) in the README.
 
-## 저장소 설정
+## Repo settings
 
-`main` 보호 규칙과 릴리스 태그 보호 규칙은 GitHub ruleset으로 적용되어 있고, 같은 내용이 `.github/rulesets/`에 기록되어 있습니다. 규칙을 바꿀 때는 이 파일을 고치는 PR을 먼저 병합한 다음 GitHub 설정에 반영합니다.
+The rules for `main` and for release tags are GitHub rulesets, recorded as they are applied in `.github/rulesets/`. To change a rule, merge a pull request that changes that file, then apply it in the GitHub settings.

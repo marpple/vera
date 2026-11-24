@@ -1,81 +1,81 @@
-name: 버그 신고
-description: 허브가 문서와 다르게 동작하거나, 스크립트나 페이지에서 오류가 발생했을 때 등록합니다.
+name: Bug report
+description: The hub does something other than what the docs say, or a script or page fails.
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        보안 취약점은 이 양식으로 등록하지 않습니다. [SECURITY.md](https://github.com/marpple/vera/blob/main/SECURITY.md)의 비공개 신고 절차를 따라 주세요.
+        Do not report a security vulnerability here. Follow the private report steps in [SECURITY.md](https://github.com/marpple/vera/blob/main/SECURITY.md).
   - type: textarea
     id: what
     attributes:
-      label: 무슨 일이 일어났나요
-      description: 실제로 관찰한 동작을 적습니다. 오류 메시지는 원문 그대로 붙여 넣습니다.
+      label: What happened
+      description: What you saw. Paste error messages as they were printed.
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: 어떻게 동작해야 하나요
-      description: 기대한 동작과 그 근거(README, 스킬 문서의 문장 등)를 적습니다.
+      label: What should have happened
+      description: What you expected, and where that comes from (a sentence in the README or the skill, for example).
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
-      label: 재현 방법
-      description: 다른 사람이 그대로 따라 할 수 있도록 순서대로 적습니다.
+      label: Steps to reproduce
+      description: In order, so that someone else can follow them.
       placeholder: |
-        1. Orca 터미널에서 Claude Code와 기능을 논의합니다.
-        2. /vera:hub를 호출합니다.
+        1. Discuss a feature with Claude Code in an Orca terminal.
+        2. Invoke /vera:hub.
         3. ...
     validations:
       required: true
   - type: dropdown
     id: runtime
     attributes:
-      label: 허브를 실행한 곳
+      label: Where the hub ran
       options:
         - Orca
-        - Claude 데스크톱 앱
-        - 해당 없음 (설치, 문서, 테스트 등)
+        - Claude desktop app
+        - Does not apply (install, docs, tests)
     validations:
       required: true
   - type: dropdown
     id: agent
     attributes:
-      label: 에이전트
+      label: Agent
       options:
         - Claude Code
         - Codex
-        - 그 밖의 에이전트
+        - Another agent
     validations:
       required: true
   - type: input
     id: version
     attributes:
-      label: Vera 버전
-      description: "`claude plugin list` 또는 `codex plugin list`에 표시되는 버전입니다."
+      label: Vera version
+      description: "The version `claude plugin list` or `codex plugin list` shows."
       placeholder: 0.6.0
     validations:
       required: true
   - type: input
     id: env
     attributes:
-      label: 운영 체제와 node 버전
+      label: Operating system and node version
       placeholder: macOS 15, node 22
   - type: textarea
     id: logs
     attributes:
-      label: 로그와 출력
-      description: "`preflight.cjs` 출력, 허브 폴더의 `sync.log`, 터미널 출력 등을 붙여 넣습니다. 토큰과 비밀값은 지우고 올립니다."
+      label: Logs and output
+      description: "The output of `preflight.cjs`, `sync.log` from the hub folder, terminal output. Remove tokens and secrets first."
       render: shell
   - type: checkboxes
     id: checks
     attributes:
-      label: 등록 전 확인
+      label: Before you submit
       options:
-        - label: 같은 문제를 다루는 이슈가 이미 있는지 검색했습니다.
+        - label: I searched the open and closed issues for this problem.
           required: true
-        - label: 토큰, 비밀값, 사내 비공개 정보가 들어 있지 않습니다.
+        - label: This report holds no token, secret, or private information.
           required: true

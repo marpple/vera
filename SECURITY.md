@@ -1,22 +1,22 @@
-# 보안 정책
+# Security policy
 
-## 지원하는 버전
+## Supported versions
 
-보안 수정은 `main`의 최신 릴리스에만 반영합니다. 이전 버전을 사용 중이라면 먼저 최신 버전으로 업데이트해 주세요.
+Security fixes go into the latest release on `main` only. If you run an older version, update first.
 
-## 취약점을 신고하는 방법
+## Reporting a vulnerability
 
-취약점은 **공개 이슈로 등록하지 않습니다.** GitHub의 비공개 취약점 신고 기능을 사용합니다.
+**Do not open a public issue for a vulnerability.** Use GitHub's private vulnerability reporting.
 
-1. [비공개 신고 양식](https://github.com/marpple/vera/security/advisories/new)을 엽니다.
-2. 영향을 받는 파일이나 스크립트, 재현 방법, 예상되는 영향을 적습니다.
-3. 관리자가 같은 비공개 대화에서 답변하고, 수정이 릴리스될 때까지 내용을 공개하지 않습니다.
+1. Open the [private report form](https://github.com/marpple/vera/security/advisories/new).
+2. Say which file or script is affected, how to reproduce it, and what it lets someone do.
+3. A maintainer answers in that private thread, and the report stays private until a fix is released.
 
-## 취약점으로 다루는 범위
+## What counts as a vulnerability
 
-Vera의 허용 목록, 독립 리뷰, 변경 줄 해시 비교는 실수를 잡는 장치이고 샌드박스가 아닙니다. 작업자 세션은 사용자의 계정 권한으로 실행됩니다. 이 범위는 [README의 "What the checks cover"](README.md#what-the-checks-cover)에 적혀 있습니다.
+Vera's allow list, independent review, and changed-lines hash catch mistakes. They are not a sandbox: a worker session runs with your account's access. ["What the checks cover"](README.md#what-the-checks-cover) in the README states this limit.
 
-| 구분 | 예시 |
+| | Examples |
 |---|---|
-| 취약점으로 신고해 주세요 | 스크립트나 페이지가 문서에 적힌 범위를 벗어나 파일을 읽거나 쓰는 경우, 대시보드나 워크스루 페이지에서 의도하지 않은 코드가 실행되는 경우, 허용 목록이 문서와 다르게 명령을 허용하는 경우 |
-| 일반 이슈로 등록해 주세요 | 문서에 적힌 한계 그대로의 동작, 보안과 무관한 버그 |
+| Report it privately | A script or page reads or writes files outside what the docs say; the dashboard or the walkthrough page runs code it should not; the allow list lets a command through that the docs say it asks about |
+| Open a normal issue | Behaviour that matches a documented limit; a bug with no security effect |

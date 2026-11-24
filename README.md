@@ -190,7 +190,7 @@ For maintainers, and for an agent asked to release. A merge to `main` does not r
 
 ## Contributing
 
-Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) describes the steps from an issue to a merge, and [SECURITY.md](SECURITY.md) says how to report a vulnerability. Both are written in Korean, the language of the team that maintains Vera.
+Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) describes the steps from an issue to a merge, and [SECURITY.md](SECURITY.md) says how to report a vulnerability.
 
 ## License
 

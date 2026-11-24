@@ -31,7 +31,7 @@ test("issues start from a form, and a vulnerability is sent to a private report"
 
 test("the pull request template asks for what AGENTS.md says a body holds", () => {
   const template = read(".github/PULL_REQUEST_TEMPLATE.md");
-  for (const needle of ["## 무엇을, 왜", "## 관련 이슈", "## 검증", "## 확인 사항", "Closes #", "`node --test`"]) {
+  for (const needle of ["## What", "## Issue", "## Verification", "## Checklist", "Closes #", "`node --test`"]) {
     assert.ok(template.includes(needle), `the template lacks ${needle}`);
   }
 });
@@ -54,6 +54,17 @@ test("the main ruleset on record is the one AGENTS.md describes", () => {
   const nodes = [...ci.match(/node: \[([^\]]+)\]/)[1].matchAll(/"(\d+)"/g)].map((m) => `test (${m[1]})`);
   assert.deepStrictEqual(checks.required_status_checks.map((c) => c.context), nodes, "the required checks are the CI matrix jobs");
   for (const name of nodes) assert.ok(agents.includes("`" + name + "`"), `AGENTS.md does not name ${name}`);
+});
+
+test("the files a contributor reads and fills are in English", () => {
+  const HANGUL = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/;
+  const files = ["AGENTS.md", "CONTRIBUTING.md", "SECURITY.md", ".github/PULL_REQUEST_TEMPLATE.md", ".github/CODEOWNERS",
+    ...fs.readdirSync(path.join(root, ".github/ISSUE_TEMPLATE")).map((n) => `.github/ISSUE_TEMPLATE/${n}`)];
+  for (const rel of files) {
+    const line = read(rel).split("\n").find((l) => HANGUL.test(l));
+    assert.strictEqual(line, undefined, `Hangul in ${rel}: ${line}`);
+  }
+  for (const rel of ["AGENTS.md", "CONTRIBUTING.md"]) assert.match(read(rel), /in English/, `${rel} does not say which language to write in`);
 });
 
 test("CI reads the repo only, and the release workflow runs when the version file changes", () => {

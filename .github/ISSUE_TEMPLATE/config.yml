@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 보안 취약점 신고
+  - name: Report a security vulnerability
     url: https://github.com/marpple/vera/security/advisories/new
-    about: 취약점은 공개 이슈로 등록하지 않고, 이 비공개 신고 양식으로 알려 주세요.
+    about: Do not open a public issue for a vulnerability. Use this private report form.

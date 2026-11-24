@@ -1,22 +1,22 @@
-<!-- 제목은 명령형 영어 문장으로 씁니다. squash 병합되면 이 제목이 main의 커밋 제목이 됩니다. 예: Refuse gh pr merge in a Claude worker's worktree -->
+<!-- The title is an English sentence in the imperative mood. After the squash merge it is the commit subject on main. Example: Refuse gh pr merge in a Claude worker's worktree -->
 
-## 무엇을, 왜
+## What
 
-<!-- 무엇을 바꿨는지와 그 이유를 적습니다. 경우에 따라 동작이 달라지면 표로 정리합니다. -->
+<!-- The change and the reason for it. Use a table when cases differ. -->
 
-## 관련 이슈
+## Issue
 
-<!-- 이 PR이 해결하는 이슈를 적습니다. 예: Closes #12. 릴리스 PR처럼 이슈가 없는 경우에는 그 이유를 한 줄로 적습니다. -->
+<!-- The issue this closes, such as: Closes #12. When there is none (a release, a typo), say why in one line. -->
 
-## 검증
+## Verification
 
-<!-- 실행한 명령과 그 출력을 적습니다. 예: `node --test` → tests 236, pass 236, fail 0 -->
+<!-- The commands you ran and what they printed. Example: `node --test` → tests 236, pass 236, fail 0 -->
 
-## 확인 사항
+## Checklist
 
-- [ ] 이 PR은 한 가지 관심사만 다룹니다.
-- [ ] 저장소 루트에서 `node --test`를 실행했고 모두 통과했습니다.
-- [ ] 테스트가 인용하는 문장을 고쳤다면, 같은 PR에서 테스트도 함께 고치고 그 이유를 위에 적었습니다.
-- [ ] 템플릿 파일을 추가, 이름 변경, 삭제했다면 복사 목록 네 곳을 모두 고쳤습니다.
-- [ ] `.claude-plugin/plugin.json`의 `version`은 릴리스 PR에서만 바꿨습니다.
-- [ ] 커밋과 PR 본문에 AI 에이전트를 표기하지 않았습니다.
+- [ ] This pull request has one concern.
+- [ ] I ran `node --test` from the repo root and every test passed.
+- [ ] Where I reworded a sentence a test quotes, I changed the test here and said why above.
+- [ ] Where I added, renamed, or removed a template, I updated all four copy lists.
+- [ ] `version` in `.claude-plugin/plugin.json` changes only in a release pull request.
+- [ ] No commit and no text here names an AI agent.
