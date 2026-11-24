@@ -403,3 +403,28 @@ test("a hash the resume could not convert is reviewed, not sent back for a round
   assert.match(bullet, /If the hash you kept after APPROVED already equals what the command without --v1 prints, there is nothing to do/);
   assert.match(skill, /7\. A PR that changes what guards the run or the repo: CI workflows/);
 });
+
+// A hub once asked "start the batch merge?" and merged into a branch that deploys to production by itself, before the
+// stage check the repo requires. The question never said what the merge would set off.
+test("a merge question opens with what the merge sets off and the required steps not yet confirmed", () => {
+  const skill = read(path.join(skillDir, "SKILL.md"));
+  const merging = read(path.join(refDir, "merging.md"));
+  const dashboard = read(path.join(refDir, "dashboard.md"));
+  const step2 = skill.split("\n").find((l) => l.startsWith("2. **Read the repo, then capture the spec.**"));
+  assert.match(step2, /what a merge into the base branch sets off[^\n]*what the repo requires before a merge/);
+  assert.match(step2, /write `unknown`, never a guess/);
+  const step3 = skill.slice(skill.indexOf("3. **Confirm the spec and the standing choices.**"), skill.indexOf("4. **Plan items**"));
+  assert.match(step3, /does a merge into `<base>` deploy by itself, and what must be done before one/);
+  assert.match(section(skill, "Autonomy levels"), /8\. A merge while a step the repo requires before a merge is not confirmed/);
+  const sets = section(merging, "What a merge sets off");
+  assert.ok(sets, "merging.md has no '## What a merge sets off' section");
+  assert.match(sets, /Every message that asks for a merge or offers one, for one item or many, opens with both/);
+  assert.match(sets, /the question is about that step first and the merge second/);
+  assert.match(sets, /A step is confirmed only when the developer says so/);
+  assert.match(sets, /is unconfirmed again/);
+  const approval = merging.slice(merging.indexOf("## Approval"), merging.indexOf("## At High"));
+  assert.match(approval, /or before what the merge sets off and the steps not yet confirmed were said/);
+  assert.match(approval, /An answer to an offer of yours that left them out[^\n]*is not approval either/);
+  const ask = dashboard.split("\n").find((l) => l.startsWith("| `ask` |"));
+  assert.match(ask, /a merge approval with a required step not confirmed/);
+});
