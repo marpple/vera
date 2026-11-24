@@ -9,29 +9,29 @@ const readme = () => fs.readFileSync(path.join(ROOT, "README.md"), "utf8");
 const HANGUL = /[ᄀ-ᇿ㄰-㆏가-힯]/;
 
 const INSTALL = [
-  "claude plugin marketplace add ddevkim/vera",
-  "claude plugin install vera@vera",
-  "/plugin marketplace add ddevkim/vera",
-  "/plugin install vera@vera",
-  "codex plugin marketplace add ddevkim/vera",
-  "codex plugin add vera@vera",
-  "npx skills add ddevkim/vera --skill hub"
+  "claude plugin marketplace add marpple/vera",
+  "claude plugin install vera@mco",
+  "/plugin marketplace add marpple/vera",
+  "/plugin install vera@mco",
+  "codex plugin marketplace add marpple/vera",
+  "codex plugin add vera@mco",
+  "npx skills add marpple/vera --skill hub"
 ];
 
 const RUN_UPDATE_REMOVE = [
   "/vera:hub",
   "$vera:hub",
-  "claude plugin marketplace update vera",
-  "claude plugin update vera@vera",
+  "claude plugin marketplace update mco",
+  "claude plugin update vera@mco",
   "**Enable auto-update**",
   "/reload-plugins",
   "Codex has no auto-update",
-  "codex plugin marketplace upgrade vera",
+  "codex plugin marketplace upgrade mco",
   "npx skills update hub",
-  "claude plugin uninstall vera@vera",
-  "claude plugin marketplace remove vera",
-  "codex plugin remove vera@vera",
-  "codex plugin marketplace remove vera",
+  "claude plugin uninstall vera@mco",
+  "claude plugin marketplace remove mco",
+  "codex plugin remove vera@mco",
+  "codex plugin marketplace remove mco",
   "npx skills remove hub"
 ];
 
@@ -44,6 +44,23 @@ test("README is titled Vera and gives the invoke, update, and uninstall commands
   const text = readme();
   assert.match(text, /^# Vera$/m);
   for (const cmd of RUN_UPDATE_REMOVE) assert.ok(text.includes(cmd), `missing command: ${cmd}`);
+});
+
+test("README tells a user of the deprecated ddevkim/vera marketplace how to remove it", () => {
+  const text = readme();
+  const start = text.indexOf("\n### Moving from ddevkim/vera\n");
+  assert.ok(start > 0, "README has no Moving from ddevkim/vera section");
+  const section = text.slice(start, text.indexOf("\n### ", start + 1));
+  for (const cmd of [
+    "claude plugin uninstall vera@vera",
+    "claude plugin marketplace remove vera",
+    "codex plugin remove vera@vera",
+    "codex plugin marketplace remove vera",
+    "npx skills remove hub"
+  ]) {
+    assert.ok(section.includes(cmd), `Moving section does not give: ${cmd}`);
+  }
+  assert.match(section, /deprecated/);
 });
 
 test("every relative link and image path in README exists", () => {

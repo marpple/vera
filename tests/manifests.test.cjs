@@ -80,15 +80,16 @@ test("plugin manifest has its required fields", () => {
   assert.strictEqual(p.license, "MIT");
 });
 
-test("the marketplace and its plugin are both named vera, at the vera repo", () => {
+test("the mco marketplace lists the vera plugin, at the marpple/vera repo", () => {
   const m = readJson(".claude-plugin/marketplace.json");
   const p = readJson(".claude-plugin/plugin.json");
-  assert.strictEqual(m.name, "vera");
+  assert.strictEqual(m.name, "mco");
+  assert.strictEqual(m.owner.name, "marpple");
   assert.deepStrictEqual(m.plugins.map((e) => e.name), ["vera"]);
   assert.match(m.metadata.description, /Vera/);
   assert.strictEqual(p.name, "vera");
-  assert.strictEqual(p.homepage, "https://github.com/ddevkim/vera");
-  assert.strictEqual(p.repository, "https://github.com/ddevkim/vera");
+  assert.strictEqual(p.homepage, "https://github.com/marpple/vera");
+  assert.strictEqual(p.repository, "https://github.com/marpple/vera");
 });
 
 test("the repo states an MIT license", () => {
