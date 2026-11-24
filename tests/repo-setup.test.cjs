@@ -64,7 +64,14 @@ test("the files a contributor reads and fills are in English", () => {
     const line = read(rel).split("\n").find((l) => HANGUL.test(l));
     assert.strictEqual(line, undefined, `Hangul in ${rel}: ${line}`);
   }
-  for (const rel of ["AGENTS.md", "CONTRIBUTING.md"]) assert.match(read(rel), /in English/, `${rel} does not say which language to write in`);
+  assert.match(read("CONTRIBUTING.md"), /in English/, "CONTRIBUTING.md does not say which language to write in");
+  const agents = read("AGENTS.md");
+  const start = agents.indexOf("\n## Language\n");
+  assert.ok(start >= 0, "AGENTS.md has no Language section");
+  const section = agents.slice(start, agents.indexOf("\n## ", start + 1));
+  for (const needle of ["English", "Every file in the repo", "Commit subjects", "pull request titles and bodies", "issues", "review comments", "release notes", "answer them in theirs"]) {
+    assert.ok(section.includes(needle), `the Language section of AGENTS.md does not mention: ${needle}`);
+  }
 });
 
 test("CI reads the repo only, and the release workflow runs when the version file changes", () => {

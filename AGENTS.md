@@ -20,6 +20,16 @@ Vera is a set of agent skills shipped as one plugin for Claude Code and Codex. T
 
 Everything under `skills/` runs on someone else's machine: no absolute paths, user names, or local tools beyond the prerequisites in `README.md`. `tests/skill-text.test.cjs` checks for the common cases. `README.md` holds no Hangul.
 
+## Language
+
+Vera is for users everywhere, so English is the language of the repo and of everything on GitHub. The developer may talk to you in another language: answer them in theirs, and still write these in English.
+
+- Every file in the repo: skill text, scripts and their comments, tests, docs, and the forms and templates under `.github/`.
+- Commit subjects and bodies, pull request titles and bodies, issues, review comments, and release notes.
+- The manifests in `.claude-plugin/`, and the repo's description and topics on GitHub.
+
+Another language belongs in the repo only as a locale the product supports or a test of one: the `ko` label tables in `skills/hub/templates/`, the fixtures and tests for them, and a string a skill file marks as an example of what a developer may type. Do not translate these away, and do not add a file written in another language.
+
 ## Issues, branches, and review
 
 The steps a person follows are in `CONTRIBUTING.md`. These are the rules, and GitHub enforces the ones about `main` with the ruleset recorded in `.github/rulesets/main.json`.
@@ -35,7 +45,6 @@ The steps a person follows are in `CONTRIBUTING.md`. These are the rules, and Gi
 
 - One concern per pull request, branched from `origin/main`. The title becomes the commit subject on `main`.
 - Titles and commit subjects are English sentences in the imperative mood with no type prefix, such as "Refuse gh pr merge in a Claude worker's worktree". The commit body says what changed and why.
-- Vera is for users everywhere: write issues, pull request bodies, commits, and review comments in English.
 - The pull request body fills `.github/PULL_REQUEST_TEMPLATE.md`: `## What` (the change and the reason, with a table when cases differ), `## Issue` (`Closes #<n>`), `## Verification` (the commands you ran and what they printed, such as the `node --test` count), and the checklist.
 - Name no AI agent in commits or pull requests: no `Co-Authored-By` trailer for an agent and no "Generated with" line.
 - A merged release pull request is tagged and published by `.github/workflows/release.yml`: do not create the tag by hand.
