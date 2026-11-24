@@ -405,8 +405,9 @@ test("a hash the resume could not convert is reviewed, not sent back for a round
 });
 
 // A hub once asked "start the batch merge?" and merged into a branch that deploys to production by itself, before the
-// stage check the repo requires. The question never said what the merge would set off.
-test("a merge question opens with what the merge sets off and the required steps not yet confirmed", () => {
+// check that repo requires. The question never said what the merge would set off. Each repo requires something
+// different before a merge, and many nothing, so the hub says only what the repo's own documents say.
+test("a merge question opens with what the merge sets off and the steps the repo requires that are not yet done", () => {
   const skill = read(path.join(skillDir, "SKILL.md"));
   const merging = read(path.join(refDir, "merging.md"));
   const dashboard = read(path.join(refDir, "dashboard.md"));
@@ -415,16 +416,19 @@ test("a merge question opens with what the merge sets off and the required steps
   assert.match(step2, /write `unknown`, never a guess/);
   const step3 = skill.slice(skill.indexOf("3. **Confirm the spec and the standing choices.**"), skill.indexOf("4. **Plan items**"));
   assert.match(step3, /does a merge into `<base>` deploy by itself, and what must be done before one/);
-  assert.match(section(skill, "Autonomy levels"), /8\. A merge while a step the repo requires before a merge is not confirmed/);
+  assert.match(section(skill, "Autonomy levels"), /8\. A merge while a step the repo requires before a merge is one the developer has not said is done/);
   const sets = section(merging, "What a merge sets off");
   assert.ok(sets, "merging.md has no '## What a merge sets off' section");
   assert.match(sets, /Every message that asks for a merge or offers one, for one item or many, opens with both/);
   assert.match(sets, /the question is about that step first and the merge second/);
-  assert.match(sets, /A step is confirmed only when the developer says so/);
-  assert.match(sets, /is unconfirmed again/);
+  assert.match(sets, /say only what this repo's documents and the developer's answer say, in their words, and never add a step of your own/);
+  assert.match(sets, /A repo that requires nothing gets no such line and no question about one/);
+  assert.match(sets, /A step is done only when the developer says so/);
+  assert.match(sets, /the step is open again/);
+  assert.match(step3, /An answer of nothing is written as `none`/);
   const approval = merging.slice(merging.indexOf("## Approval"), merging.indexOf("## At High"));
-  assert.match(approval, /or before what the merge sets off and the steps not yet confirmed were said/);
+  assert.match(approval, /or before what the merge sets off and the required steps not yet done were said/);
   assert.match(approval, /An answer to an offer of yours that left them out[^\n]*is not approval either/);
   const ask = dashboard.split("\n").find((l) => l.startsWith("| `ask` |"));
-  assert.match(ask, /a merge approval with a required step not confirmed/);
+  assert.match(ask, /a merge approval with a required step not done/);
 });
