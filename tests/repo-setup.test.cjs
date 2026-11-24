@@ -58,7 +58,7 @@ test("the main ruleset on record is the one AGENTS.md describes", () => {
 
 test("the files a contributor reads and fills are in English", () => {
   const HANGUL = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/;
-  const files = ["AGENTS.md", "CONTRIBUTING.md", "SECURITY.md", ".github/PULL_REQUEST_TEMPLATE.md", ".github/CODEOWNERS",
+  const files = ["AGENTS.md", "CONTRIBUTING.md", "SECURITY.md", ".github/AGENTS.md", "skills/AGENTS.md", "tests/AGENTS.md", ".github/PULL_REQUEST_TEMPLATE.md", ".github/CODEOWNERS",
     ...fs.readdirSync(path.join(root, ".github/ISSUE_TEMPLATE")).map((n) => `.github/ISSUE_TEMPLATE/${n}`)];
   for (const rel of files) {
     const line = read(rel).split("\n").find((l) => HANGUL.test(l));

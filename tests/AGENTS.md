@@ -12,6 +12,7 @@ The whole check for this repo: `node --test` from the root runs every file here 
 | File | Description |
 |------|-------------|
 | `agents-md.test.cjs` | The root `AGENTS.md` and the directory guides: the paths they name exist, and they name the check command and CI's Node versions |
+| `repo-setup.test.cjs` | The issue forms, the pull request template, the rulesets on record, the workflows, and the Language rule |
 | `manifests.test.cjs` | `.claude-plugin/marketplace.json` and `plugin.json`, the license, and the Codex interface file |
 | `readme.test.cjs` | `README.md`: every install, update, and uninstall command, the release steps, links, and no Hangul |
 | `skill-text.test.cjs` | The hub instructions: every path they name exists, nothing holds only on one machine, the language rules stay |

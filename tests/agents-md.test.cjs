@@ -37,7 +37,7 @@ test("AGENTS.md names the check command and the Node versions CI uses", () => {
 });
 
 // The directory guides: skills/AGENTS.md and tests/AGENTS.md describe every file in their folder.
-const guides = ["skills", "tests"];
+const guides = ["skills", "tests", ".github"];
 
 test("each directory guide points to its parent and is named in the root AGENTS.md", () => {
   for (const dir of guides) {
