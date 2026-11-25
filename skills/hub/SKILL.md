@@ -72,7 +72,7 @@ The developer picks a level when the hub starts (default `low`) and may change i
 5. A merge that bypasses branch protection (`--admin`).
 6. A review blocked three rounds on the same finding.
 7. A PR that changes what guards the run or the repo: CI workflows (`.github/workflows`), CODEOWNERS, branch protection, or a repo rule document you read your instructions from.
-8. A merge while a step the repo requires before a merge is one the developer has not said is done, or while what the merge sets off is `unknown` ([references/merging.md](references/merging.md), "What a merge sets off").
+8. A merge while a step the repo requires before a merge is one the developer has not said is done, or while what the merge sets off or what the repo requires before one is `unknown` or missing from `spec.md` ([references/merging.md](references/merging.md), "What a merge sets off").
 
 **Precedence.** The level outranks this skill's approval steps and a repo document's rule to ask for confirmation; it never outranks the stop list.
 
