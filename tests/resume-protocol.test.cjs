@@ -108,7 +108,8 @@ test("resume sends a changed protocol before it records it, with the live slots 
   const bullet = lines.slice(start, lines.findIndex((l, i) => i > start && l.startsWith("   - "))).join("\n");
   assert.match(bullet, /When it prints the `protocolFrom` in `state\.js`, go on/);
   assert.match(bullet, /a `cannot hash:` line is not a hash/);
-  assert.match(bullet, /`hubSession` and the autonomy level, which come from `state\.js`/);
+  // The Claude app protocol no longer names the hub's session (workers write their messages into their own transcripts).
+  assert.match(bullet, /except the autonomy level, which comes from `state\.js`/);
   // Live workers include support workers waiting with an open PR: they follow rule 6f when the hub reopens them.
   assert.match(bullet, /each live worker: a `workers` row whose tone is not `done` and whose dispatch is not `released` \(on the Claude app, whose session is not archived\), including a `support` worker waiting with its PR open/);
   const order = ["`<hub>/protocol.new.md`", "`cmp -s <hub>/protocol.new.md <hub>/protocol.md`", "`send` each live worker",
@@ -152,7 +153,8 @@ test("resume writes each live worker's allow list again", () => {
 
 test("protocol.md keeps the live autonomy level and hub session", () => {
   assert.match(skill, /set `autonomy`, set the level in rule 13 of `protocol\.md` and of each live worker's `specs\/<id>\.md` \(a worker re-reads its spec after its own compaction\)/);
-  assert.match(read("references/claude-app.md"), /set `hubSession`, write the new id into rule 0 of `protocol\.md` and of each live worker's `specs\/<id>\.md`, and send every live worker `HUB MOVED/);
+  // Workers write their VERA messages into their own transcripts, so a new hub session only records its id.
+  assert.match(read("references/claude-app.md"), /set `hubSession` \(workers write their messages into their own transcripts, so they need no new id\)/);
 });
 
 test("the old-layout upgrade records protocolFrom when it replaces protocol.md", () => {

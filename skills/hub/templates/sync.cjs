@@ -14,6 +14,16 @@
    node <hub>/sync.cjs          loop (one instance per hub folder, guarded by sync.pid); it exits by itself once state.js has closed: true,
                                 state.js has been missing for 4 cycles, or sync.pid names another process
    node <hub>/sync.cjs --once   one cycle, no lock
+   node <hub>/sync.cjs --wait   claude-app only: never touches sync.pid and writes only wait.pid; exits 0 once a worker has
+                                something for the hub, printing one line each, after its time: a VERA message newer than state.js
+                                lastMsgAt, or "stopped <item>: <its last text>" for a worker whose turn ended after lastMsgAt
+                                without ask, question, or done; exits 1 when state.js stays unreadable, 2 when the hub is not
+                                claude-app. One wait per hub folder (wait.pid): a new one replaces the running one, which exits 3
+                                and prints nothing; one ended from outside exits 143. Each VERA line is followed by its
+                                message's body, indented by four spaces. The hub runs it in the background so a worker's message wakes it: in the app
+                                SendMessage always asks the developer, so workers end their turn with the VERA message as its
+                                text instead (references/claude-app.md).
+   node <hub>/sync.cjs --wait --now   the same lines at once (none when nothing waits), then exit; never touches wait.pid
    node <hub>/sync.cjs --stop   stop the running loop, when sync.pid names one */
 "use strict";
 const fs = require("fs");
@@ -23,7 +33,7 @@ const vm = require("vm");
 const { execFile, execFileSync } = require("child_process");
 
 const HUB = __dirname;
-const STATE = path.join(HUB, "state.js"), LIVE = path.join(HUB, "live.js"), PID = path.join(HUB, "sync.pid"), PORT = path.join(HUB, "sync.port");
+const STATE = path.join(HUB, "state.js"), LIVE = path.join(HUB, "live.js"), PID = path.join(HUB, "sync.pid"), PORT = path.join(HUB, "sync.port"), WAIT_PID = path.join(HUB, "wait.pid");
 const PROJECTS = process.env.VERA_TRANSCRIPTS || path.join(os.homedir(), ".claude", "projects"); // claude-app transcripts
 const CYCLE_MS = Number(process.env.VERA_CYCLE_MS) || 15000, GH_EVERY = 4, INBOX_LIMIT = 60, MISSING_CYCLES = 4;
 const PHASE_NUM = { red: 1, green: 2, verified: 3, "pr-open": 6, "ci-green": 7 }; // status --phase → state.js phases
@@ -186,7 +196,7 @@ const VERA = /^VERA\s+(status|ask|question|done)\s+([A-Za-z0-9_-]+)((?:\s+[a-z]+
 const VERA_TYPE = { status: "status", ask: "ask", question: "question", done: "worker_done" }; // VERA kind → Orca type
 const ms = t => { const v = Date.parse(t || ""); return Number.isFinite(v) ? v : 0; };
 
-// One VERA message (references/claude-app.md, "Worker to hub") from the text of a SendMessage call, or null.
+// One VERA message (references/claude-app.md, "Worker to hub") from a worker's text or a SendMessage call, or null.
 function parseVera(text, at) {
   const lines = String(text || "").split("\n");
   const m = (lines[0] || "").trim().match(VERA);
@@ -195,7 +205,8 @@ function parseVera(text, at) {
   const hit = SUMMARY_LINE.exec(lines.slice(1).join("\n"));
   const raw = m[4] || "";
   const subject = raw.startsWith(`${m[2]}:`) ? raw.slice(m[2].length + 1).trim() : raw; // Orca subjects already start with the id
-  return { kind: m[1], item: m[2], phase: opts.phase || null, outcome: opts.outcome || null, subject, at, summary: hit ? hit[1].trim() : null };
+  const body = lines.slice(1).join("\n").trim();
+  return { kind: m[1], item: m[2], phase: opts.phase || null, outcome: opts.outcome || null, subject, at, summary: hit ? hit[1].trim() : null, body };
 }
 
 // The worker's transcript: the newest top-level .jsonl in its worktree's project folder, and how many there are.
@@ -214,10 +225,19 @@ function transcriptOf(worktree) {
 // Reads only the bytes appended since the last cycle. Lines are cut at a newline byte, so a multibyte
 // character split across two reads is decoded whole.
 const transcripts = new Map();
+// A turn that writes the same VERA message again (a Stop hook asked it to rewrite its text, say) sent it once: keep the first
+// one's time, so a hub that handled it is not woken again, and take the later body.
+function addVera(c, v) {
+  const t = c.turnVera;
+  if (t && t.kind === v.kind && t.item === v.item && t.subject === v.subject) { if (v.body) { t.body = v.body; t.summary = v.summary; } return; }
+  c.vera.push(v);
+  c.turnVera = v;
+}
+const TURN_GOES_ON = new Set(["tool_use", "pause_turn"]); // any other stop_reason (end_turn, max_tokens, refusal, …) ends the turn
 function readTranscript(file) {
   let c = transcripts.get(file);
   const size = fs.statSync(file).size;
-  if (!c || size < c.offset) c = { offset: 0, rest: Buffer.alloc(0), at: 0, say: null, ended: false, open: new Map(), sent: new Map(), vera: [] };
+  if (!c || size < c.offset) c = { offset: 0, rest: Buffer.alloc(0), at: 0, say: null, ended: false, endedAt: 0, open: new Map(), sent: new Map(), vera: [], turnVera: null };
   if (size > c.offset) {
     const fd = fs.openSync(file, "r");
     const buf = Buffer.alloc(size - c.offset);
@@ -238,16 +258,27 @@ function readTranscript(file) {
           c.open.delete(b.tool_use_id);
           // A VERA message counts once its SendMessage returned without an error.
           const v = c.sent.get(b.tool_use_id);
-          if (v && !b.is_error) c.vera.push(v);
+          if (v && !b.is_error) addVera(c, v);
           c.sent.delete(b.tool_use_id);
         }
         const text = typeof content === "string" ? content : arr(content).filter(b => b.type === "text").map(b => b.text || "").join("");
-        if (/^\[Request interrupted by user/.test(text)) c.ended = true; // an interrupt ends the turn
-        else if (!o.isMeta && !/^\s*<(command-name|local-command-)/.test(text)) c.ended = false; // local slash commands start no turn
+        const from = typeof o.origin === "string" ? o.origin : o.origin && o.origin.kind;
+        if (/^\[Request interrupted by user/.test(text)) { c.ended = true; c.endedAt = t; } // an interrupt ends the turn
+        else if (from === "peer") { c.ended = false; c.turnVera = null; } // another session's message (the hub's reply) starts a new turn; the app marks it isMeta
+        else if (!o.isMeta && !/^\s*<(command-name|local-command-)/.test(text)) {
+          c.ended = false; // local slash commands start no turn
+          // A prompt starts a new turn. A task notification does too, but a worker that wakes for one while it waits on the hub still waits.
+          // A compaction's summary is no prompt either: the worker still waits on what it asked.
+          if (from !== "task-notification" && !o.isCompactSummary && !arr(content).some(b => b.type === "tool_result")) c.turnVera = null;
+        }
         continue;
       }
       for (const b of arr(content)) {
-        if (b.type === "text" && b.text) c.say = flat(b.text, 200);
+        if (b.type === "text" && b.text) {
+          c.say = flat(b.text, 200);
+          const v = parseVera(b.text, o.timestamp); // a worker that ends its turn with the VERA message as its text
+          if (v) addVera(c, v);
+        }
         if (b.type !== "tool_use") continue;
         c.open.set(b.id, { name: b.name, input: b.input || {}, t });
         if (/SendMessage$/.test(b.name || "")) {
@@ -255,8 +286,10 @@ function readTranscript(file) {
           if (v) c.sent.set(b.id, v);
         }
       }
-      // Each content block is its own line, carrying its message's stop_reason: end_turn means the turn is over.
-      c.ended = msg.stop_reason === "end_turn";
+      // Each content block is its own line, carrying its message's stop_reason. The turn is over unless the model goes on to a
+      // tool (tool_use) or the line is cut off (none yet); an API error ends the turn whatever stop_reason it carries.
+      c.ended = o.isApiErrorMessage === true || (!!msg.stop_reason && !TURN_GOES_ON.has(msg.stop_reason));
+      if (c.ended) c.endedAt = t; // when the turn ended: later lines that open no turn (a local /cost) do not move it
     }
   }
   transcripts.set(file, c);
@@ -282,7 +315,9 @@ function syncAppWorkers(S, errors) {
       const arg = i.command || i.file_path || i.description || i.pattern || "";
       workers[w.item] = {
         at: c.at ? new Date(c.at).toISOString() : null,
+        endedAt: c.ended && c.endedAt ? new Date(c.endedAt).toISOString() : null,
         state: open || !c.ended ? "working" : "idle",
+        turnKind: c.turnVera && c.turnVera.item === w.item ? c.turnVera.kind : null, // the last VERA kind of its latest turn: ask, question, or done means it waits on the hub
         say: c.say,
         tool: open ? `${open.name}${arg ? `: ${oneLine(arg, 80)}` : ""}` : null,
         wait: open && open.t && Date.now() - open.t >= APP_WAIT_MS ? { source: "transcript", since: open.t, reason: null } : null
@@ -307,6 +342,78 @@ function appPending(S, vera) {
   }
   for (const v of msgs) if ((v.kind === "status" || v.kind === "done") && v.summary) notesOut[v.item] = { text: oneLine(v.summary, 200), at: v.at, fresh: ms(v.at) > after };
   return { count: fresh.length, more: false, oldestAt: fresh.length ? fresh[0].at : null, items, notes: notesOut };
+}
+
+// --wait: the lines that end the wait, or none. Each starts with the time to set lastMsgAt to once it is handled.
+// The body follows its line, each line indented by four spaces: the options of a question, a SUMMARY:, the background.
+const veraLine = v => `${v.at} VERA ${v.kind} ${v.item}${v.phase ? ` phase=${v.phase}` : ""}${v.outcome ? ` outcome=${v.outcome}` : ""}: ${oneLine(v.subject, 200)}` +
+  (v.body ? "\n" + (v.body.length > 4000 ? `${v.body.slice(0, 4000)}\n… (cut here: read the rest with list_events)` : v.body).split("\n").map(l => `    ${l}`).join("\n") : "");
+const WAITS_ON_HUB = new Set(["ask", "question", "done"]);
+function waitLines(S, workers, vera) {
+  const ids = new Set(arr(S.lanes).flatMap(l => arr(l.items)).map(i => i.id));
+  const after = ms(S.lastMsgAt);
+  const out = vera.filter(v => ids.has(v.item) && ms(v.at) > after).sort((a, b) => ms(a.at) - ms(b.at)).map(veraLine);
+  // A worker whose turn ended after lastMsgAt without ask, question, or done stopped on its own, whenever that happened.
+  for (const [item, w] of Object.entries(workers)) {
+    if (ids.has(item) && w.state === "idle" && !WAITS_ON_HUB.has(w.turnKind) && w.endedAt && ms(w.endedAt) > after) out.push(`${w.endedAt} stopped ${item}: ${w.say || ""}`);
+  }
+  return out;
+}
+
+// One wait per hub folder: a new one replaces the one wait.pid names, which leaves with exit 3 and prints nothing,
+// so a hub that started a second wait (after a compaction, or in a new session) is woken once per message.
+// A wait of this hub: never the sync loop, which a stale pid in wait.pid could name after a reboot.
+function isWait(pid) {
+  if (!isSync(pid)) return false;
+  try { return /\s--wait(\s|$)/.test(execFileSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf8", timeout: 5000 })); }
+  catch { return false; } // without ps, end nothing: a stale pid may name something else
+}
+const ownsWait = () => { try { return fs.readFileSync(WAIT_PID, "utf8").trim() === String(process.pid); } catch { return false; } };
+function waitForWorkers(now) {
+  const every = Number(process.env.VERA_WAIT_MS) || 5000;
+  const leave = code => { try { if (ownsWait()) fs.unlinkSync(WAIT_PID); } catch {} process.exit(code); };
+  if (now) { // --wait --now: the same lines at once, none when nothing waits; no lock, so it never replaces a running wait
+    let S;
+    try { S = readState(); } catch (e) { console.error(`state.js: ${oneLine(e.message, 120)}`); process.exit(1); }
+    if (S.closed) { console.log("closed"); process.exit(0); }
+    if (S.runtime !== "claude-app") { console.error("--wait is for a claude-app hub"); process.exit(2); }
+    const { workers, vera } = syncAppWorkers(S, []);
+    const out = waitLines(S, workers, vera);
+    return process.stdout.write(out.length ? out.join("\n") + "\n" : "", () => process.exit(0)); // exit once a piped stdout has it all
+  }
+  // Replaced: wait.pid names the new wait, so exit 3. Ended from outside (it still owns wait.pid): exit 143, and the hub starts one again.
+  // Exit 3 only when wait.pid names another live wait; with no wait left (wait.pid gone or stale) the hub must start one.
+  process.on("SIGTERM", () => {
+    if (ownsWait()) leave(143);
+    let next = 0;
+    try { next = Number(fs.readFileSync(WAIT_PID, "utf8").trim()); } catch {}
+    process.exit(next && next !== process.pid && isWait(next) ? 3 : 143);
+  });
+  let other = 0;
+  try { other = Number(fs.readFileSync(WAIT_PID, "utf8").trim()); } catch {}
+  fs.writeFileSync(WAIT_PID, String(process.pid)); // first, so the replaced wait, which removes only its own pid, leaves it
+  if (other && other !== process.pid && isWait(other)) { try { process.kill(other, "SIGTERM"); } catch {} }
+  let misses = 0;
+  const tick = () => {
+    if (!ownsWait()) { // a newer wait took over; with none left (wait.pid removed), 143 so the hub starts one
+      let next = 0;
+      try { next = Number(fs.readFileSync(WAIT_PID, "utf8").trim()); } catch {}
+      process.exit(next && next !== process.pid && alive(next) ? 3 : 143);
+    }
+    let S;
+    try { S = readState(); misses = 0; } catch (e) {
+      console.error(`state.js: ${oneLine(e.message, 120)}`);
+      if (++misses >= 4) leave(1); // as the loop does: a hub folder without a readable state.js is gone
+      return setTimeout(tick, every);
+    }
+    if (S.closed) { console.log("closed"); leave(0); }
+    if (S.runtime !== "claude-app") { console.error("--wait is for a claude-app hub"); leave(2); }
+    const { workers, vera } = syncAppWorkers(S, []);
+    const out = waitLines(S, workers, vera);
+    if (out.length) return process.stdout.write(out.join("\n") + "\n", () => leave(0)); // exit once a piped stdout has it all
+    setTimeout(tick, every);
+  };
+  tick();
 }
 
 // Read-only static server for the pages: only .html, .js, and .md files inside the hub folder.
@@ -409,6 +516,8 @@ const ownsPid = () => { try { return fs.readFileSync(PID, "utf8").trim() === Str
 
 if (require.main !== module) {
   module.exports = { notes, pending, discover, parseVera, appPending, transcriptOf, readTranscript }; // loaded by tests: export the pure functions, start nothing
+} else if (process.argv.includes("--wait")) {
+  waitForWorkers(process.argv.includes("--now"));
 } else if (process.argv.includes("--once")) {
   syncOnce(true).then(() => process.exit(0));
 } else if (process.argv.includes("--stop")) {

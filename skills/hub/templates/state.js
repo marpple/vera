@@ -16,7 +16,7 @@ window.HUB_STATE = {
   hubWorktreeOldNameMode: "", // the parent's displayNameMode before the rename ("" when the hub renamed nothing)
   lastMsgId: "",             // id of the last Orca message handled: resume handles the inbox messages after it
   runtime: "orca",           // "orca" | "claude-app" (SKILL.md, "Runtime"); absent = "orca". The next three are claude-app only:
-  hubSession: "",            // the hub's Claude app session id: workers send their VERA messages to it (references/claude-app.md)
+  hubSession: "",            // the hub's Claude app session id; workers write their VERA messages into their own transcripts (references/claude-app.md)
   hubOldTitle: "",           // the hub session's title before the hub renamed it: restored at close
   lastMsgAt: "",             // ISO time of the newest worker message handled: sync.cjs marks later ones as not handled yet
   v: 2,                      // layout version: review before walkthrough. A state.js without it is upgraded first (references/upgrade.md)
