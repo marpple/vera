@@ -368,7 +368,7 @@ test("the six checks and the answer form live in reviewer.md, and the brief only
   assert.match(reviewer, /the script takes the first three as the separators/);
   assert.match(reviewer, /stay exactly as written, in every language/);
   const brief = review.split("## Brief")[1].split("## After the verdict")[0];
-  assert.match(brief, /previous blocking findings: the `\[blocking\]` lines of <hub>\/reviews\/<id>-r<n-1>\.md<, except the ones the hub set aside: <their places>>\. Since the last review:/);
+  assert.match(brief, /previous blocking findings: the `\[blocking\]` lines of <hub>\/reviews\/<id>-r<the previous review round>\.md<, except the ones the hub set aside: <their places>>\. Since the last review:/);
   assert.match(brief, /Follow <this skill's folder>\/references\/reviewer\.md/);
   assert.match(brief, /answer only `CANNOT READ reviewer\.md`/);
   assert.match(brief, /the verdict line and the tags stay in English, exactly as the form writes them/);
@@ -388,11 +388,13 @@ test("after the verdict the hub saves it as it came, runs verdict.cjs, and sends
   const after = readSkill("references/review.md").split("## After the verdict")[1];
   assert.match(after, /Save the reviewer's answer as it came/);
   assert.match(after, /Never change the saved file afterwards: the script reads it\./);
-  assert.ok(after.includes("{ printf '## %s\\n\\n' \"<heading>\"; cat <that file>; } | gh pr comment <n> --body-file -`"));
+  assert.ok(after.includes("body=$(cat \"<that file>\") && printf '## %s\\n\\n%s\\n' \"<heading>\" \"$body\" | gh pr comment <n> --body-file -`"));
   assert.match(after, /From the second walkthrough round on \(`k` above 1\), always add `--from <hub>\/walkthroughs\/<id>-w<k-1>\.js`: it copies the earlier rounds the new file lacks and changes nothing when they are there\./);
   assert.match(after, /`record` adds the rounds the file now holds, `; rounds 1, 2`: when a review round before this one is missing from that list, write it back by hand from its saved verdict in `<hub>\/reviews\/`/);
   assert.match(after, /the command is Orca's `orca orchestration reply --id <askId>` \(protocol rule 6c\); with the PR open it is Orca's `send` to the worker \(it reopens a closed worker; protocol rule 11\)/);
-  assert.match(after, /nothing blocks the item any more, so go on as in step 3 \(PASS\) and not as below, with every overrule recorded as step 5 says so the developer sees them on the page\./);
+  assert.match(after, /nothing blocks the item any more, so go on as in step 3 \(PASS\) and not as below\. Record every overrule as step 5 says, and in the same heredoc set that round's `verdict` in the walkthrough's `review` to `"PASS"`: the page shows a round as being fixed until its verdict is that word, and the overruled findings stay on it with your reasons\. Do not run `record` for that round again, because it would write `"CHANGES"` back\. The saved verdict file stays as it came\./);
+  assert.ok(after.includes("set that round's `verdict` in the walkthrough's `review` to `\"PASS\"`"));
+  assert.ok(after.includes("Do not run `record` for that round again"));
   assert.match(after, /scripts\/verdict\.cjs record <hub>\/reviews\/<id>-r<n>\.md <hub>\/walkthroughs\/<id>-w<k>\.js --round <n> --head <reviewHead>/);
   assert.match(after, /A `cannot parse:` line gives its reason: read it first\. When it is about the command \(a path, `--round`, `--head`\), correct the command and run it again\./);
   assert.match(after, /use a `node - <<'RV'` heredoc: load the file,/);
@@ -401,7 +403,8 @@ test("after the verdict the hub saves it as it came, runs verdict.cjs, and sends
   assert.match(after, /`--except`/);
   assert.match(after, /body=\$\(node <this skill's folder>\/scripts\/verdict\.cjs reply <hub>\/reviews\/<id>-r<n>\.md\) && <the reply or send command> --body "\$body"/);
   assert.match(after, /The `&&` sends only when the script printed a `REVIEW:` message/);
-  assert.strictEqual(after.split("$(").length - 1, 1, "one command substitution, and it is joined with &&");
+  assert.strictEqual(after.split("$(").length - 1, after.split("body=$(").length - 1, "every command substitution is a body=$(...) assignment");
+  for (const part of after.split("body=$(").slice(1)) assert.ok(part.includes(") && "), part.slice(0, 80));
   assert.match(after, /A `cannot parse:` line is not a message, so never send it/);
   assert.match(after, /The non-blocking findings stay in the saved verdict, `<hub>\/reviews\/<id>-r<n>\.md`/);
   assert.match(readSkill("references/cleanup.md"), /the non-blocking findings in the saved verdicts under `<hub>\/reviews\/`/);
@@ -510,4 +513,17 @@ test("record prints the rounds the walkthrough now holds", () => {
   assert.strictEqual(first(args(target, 2, "--from", src)), "ok: PASS, 0 blocking, 1 non-blocking; rounds 1, 2");
   assert.strictEqual(first(args(target, 2, "--from", src)), "ok: PASS, 0 blocking, 1 non-blocking; rounds 1, 2");
   assert.ok(!run("check", v).out.includes("rounds"));
+  const dup = walkFile({ item: "N1", review: [{ round: 1, verdict: "PASS" }, { round: 1, verdict: "CHANGES" }, { verdict: "PASS", text: "no number" }] });
+  assert.strictEqual(first(args(dup, 2)), "ok: PASS, 0 blocking, 1 non-blocking; rounds 1, 1, 2");
+});
+
+test("a saved verdict is posted under a heading only when it can be read", () => {
+  const file = path.join(tmp(), "r2.md");
+  fs.writeFileSync(file, "VERDICT: PASS\n[non-blocking] a.js:1 — 100% — `x` — $(echo NO)\n");
+  const cmd = 'body=$(cat "$1") && printf "## %s\\n\\n%s\\n" "$2" "$body"';
+  const ok = spawnSync("sh", ["-c", cmd, "sh", file, "Round 2: passed"], { encoding: "utf8" });
+  assert.strictEqual(ok.stdout, "## Round 2: passed\n\n" + fs.readFileSync(file, "utf8"));
+  const bad = spawnSync("sh", ["-c", cmd, "sh", path.join(path.dirname(file), "nope.md"), "Round 2: passed"], { encoding: "utf8" });
+  assert.strictEqual(bad.stdout, "");
+  assert.notStrictEqual(bad.status, 0);
 });
