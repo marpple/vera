@@ -43,12 +43,12 @@ const run = (...args) => {
 const base = () => ({ item: "N1", round: 1, title: "t", qa: [{ q: "q", a: "a" }], review: [] });
 const rounds = w => w.review.map(r => r.round);
 
-test("check prints the verdict, the counts, and every blocking finding in full", () => {
+test("check prints the verdict, the counts, and the place of every blocking finding", () => {
   const c = run("check", verdictFile(CHANGES));
   assert.strictEqual(c.status, 0);
   assert.strictEqual(c.lines[0], "ok: CHANGES, 2 blocking, 1 non-blocking");
-  assert.strictEqual(c.lines[1], LINE1);
-  assert.ok(c.lines[2].startsWith("2. test/a.test.js:7 — "));
+  assert.strictEqual(c.lines[1], "1. src/a.js:12");
+  assert.strictEqual(c.lines[2], "2. test/a.test.js:7");
   assert.strictEqual(c.lines.length, 3);
   const p = run("check", verdictFile(PASS));
   assert.strictEqual(p.status, 0);
@@ -394,6 +394,9 @@ test("after the verdict the hub saves it as it came, runs verdict.cjs, and sends
   assert.match(after, /A `cannot parse:` line is not a message, so never send it/);
   assert.match(after, /The non-blocking findings stay in the saved verdict, `<hub>\/reviews\/<id>-r<n>\.md`/);
   assert.match(readSkill("references/cleanup.md"), /the non-blocking findings in the saved verdicts under `<hub>\/reviews\/`/);
+  assert.match(after, /It prints `ok:` with the verdict and the counts, then the number and the place of every blocking finding \(`1\. <file>:<line>`\): their text is in the answer you just read, so the script does not print it again\./);
+  assert.match(after, /with `verdict` exactly `"PASS"` or `"CHANGES"` and `level` exactly `"blocking"` or `"non-blocking"`: the page compares these words/);
+  assert.match(after, /You read them in the reviewer's answer, and `record` or `check` numbered them, so do not write them again: let the script write the message\./);
   assert.match(after, /`fix` is always yours to write, in the same kind of heredoc: the script leaves it empty on a new finding and keeps the ones already written/);
 });
 
@@ -405,7 +408,7 @@ test("a finding that joins what is wrong and why is read as what and fix", () =>
   const c = run("check", v);
   assert.strictEqual(c.status, 0);
   assert.strictEqual(c.lines[0], "ok: CHANGES, 1 blocking, 1 non-blocking");
-  assert.strictEqual(c.lines[1], "1. " + TWO);
+  assert.strictEqual(c.lines[1], "1. tests/trimlog.test.cjs:191");
   assert.strictEqual(c.lines.length, 2);
   assert.strictEqual(run("reply", v).out, "REVIEW:\n1. " + TWO + "\n");
   const file = walkFile({ item: "N1", round: 1, review: [] });
@@ -425,8 +428,33 @@ test("a finding that joins what is wrong and why is read as what and fix", () =>
 
 test("from the fourth separator on, the rest belongs to the fix", () => {
   const v = verdictFile("VERDICT: CHANGES\n[blocking] src/a.js:1 — a — b — c — d — e\n");
-  assert.strictEqual(run("check", v).lines[1], "1. src/a.js:1 — a — b — c — d — e");
+  assert.strictEqual(run("check", v).lines[1], "1. src/a.js:1");
+  assert.strictEqual(run("reply", v).out, "REVIEW:\n1. src/a.js:1 — a — b — c — d — e\n");
   const file = walkFile({ item: "N1", round: 1, review: [] });
   assert.strictEqual(run("record", v, file, "--round", "1", "--head", "d4e5f6a").status, 0);
   assert.strictEqual(readWalk(file).review[0].findings[0].what, "a — b");
+});
+
+test("check and record print the place of each blocking finding, and reply prints its text", () => {
+  const text = [
+    "VERDICT: CHANGES",
+    "[blocking] src/a.js:12 — the retry loop never stops — a failing upstream hangs the request — cap it at 3 tries",
+    "[blocking] src/a.js:40-44 — the name `tmp` says nothing — the next reader has to trace it — call it `pending`",
+    "[non-blocking] src/b.js:3 — unused import — noise — remove it",
+  ].join("\n");
+  const v = verdictFile(text);
+  const want = "ok: CHANGES, 2 blocking, 1 non-blocking\n1. src/a.js:12\n2. src/a.js:40-44\n";
+  assert.strictEqual(run("check", v).out, want);
+  assert.strictEqual(run("record", v, walkFile(base()), "--round", "1", "--head", "d4e5f6a").out, want);
+  const r = run("reply", v);
+  assert.strictEqual(r.lines[0], "REVIEW:");
+  assert.ok(r.lines[1].startsWith("1. src/a.js:12 — the retry loop never stops — "));
+  assert.ok(r.lines[2].startsWith("2. src/a.js:40-44 — the name `tmp` says nothing — "));
+  assert.strictEqual(r.lines.length, 3);
+});
+
+test("the page compares the words the hub is told to write by hand", () => {
+  const page = fs.readFileSync(path.join(__dirname, "..", "skills", "hub", "templates", "walkthrough.html"), "utf8");
+  assert.ok(page.includes('r.verdict === "PASS"'));
+  assert.ok(page.includes('f.level === "blocking"'));
 });

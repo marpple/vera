@@ -4,9 +4,11 @@
 //   node <this skill's folder>/scripts/verdict.cjs check  <verdict file>
 //   node <this skill's folder>/scripts/verdict.cjs record <verdict file> <walkthrough file> --round <n> --head <sha> [--from <earlier walkthrough file>]
 //   node <this skill's folder>/scripts/verdict.cjs reply  <verdict file> [--except <i>[,<i>...]]
-// check, record exit 0: "ok: <PASS|CHANGES>, <b> blocking, <n> non-blocking", then one line per blocking finding:
-//   "<i>. <file>:<line> — <what> — <why> — <fix>" (i counts from 1, blocking findings only, in the file's order).
-// reply exit 0: "REVIEW:", then the blocking findings in the same form and with the same numbers, minus those named in --except.
+// check, record exit 0: "ok: <PASS|CHANGES>, <b> blocking, <n> non-blocking", then one line per blocking finding with only its place:
+//   "<i>. <file>:<line>" ("<file>:<from>-<to>" for a range; i counts from 1, blocking findings only, in the file's order). The text of
+//   a finding is not printed again: the hub has read it in the reviewer's answer.
+// reply exit 0: "REVIEW:", then each blocking finding in full, "<i>. <file>:<line> — <the parts as written>", with the same numbers
+//   check and record gave, minus those named in --except.
 // Exit 2: "cannot parse: <reason>". Every refusal leaves every file as it was and removes its own temp file.
 // The verdict file: a BOM is dropped, lines split on \r?\n, each trimmed, blank lines dropped. The first line is exactly
 // "VERDICT: PASS" or "VERDICT: CHANGES"; every other line is "[blocking] " or "[non-blocking] ", then <file>:<line> or
@@ -115,6 +117,7 @@ function main() {
   if (pos.length !== (cmd === "record" ? 2 : 1)) return refuse(`usage: verdict.cjs ${cmd} <verdict file>${cmd === "record" ? " <walkthrough file> --round <n> --head <sha> [--from <file>]" : ""}`);
   const v = parseVerdict(pos[0]);
   const lines = v.blocking.map((f, i) => show(f, i + 1));
+  const places = v.blocking.map((f, i) => `${i + 1}. ${f.where}`);
 
   if (cmd === "record") {
     if (!/^[1-9]\d*$/.test(opt["--round"] || "")) refuse("--round must be an integer of 1 or more");
@@ -132,7 +135,7 @@ function main() {
     console.log(["REVIEW:", ...kept].join("\n"));
     return;
   }
-  console.log([`ok: ${v.verdict}, ${v.blocking.length} blocking, ${v.findings.length - v.blocking.length} non-blocking`, ...lines].join("\n"));
+  console.log([`ok: ${v.verdict}, ${v.blocking.length} blocking, ${v.findings.length - v.blocking.length} non-blocking`, ...places].join("\n"));
 }
 
 try { main(); }
