@@ -32,6 +32,7 @@ The skills the Vera plugin ships. Each folder with a `SKILL.md` is one skill; to
 | `worker-spec.md` | it writes a worker's spec; holds the worker protocol |
 | `worker-model.md` | it starts a worker: chooses the model and the effort |
 | `review.md` | an item needs its independent review |
+| `reviewer.md` | never: the reviewer reads it, for the six checks and the form of its answer |
 | `walkthrough.md` | a worker is ready for review, a review passes, or lines change after an approval |
 | `dashboard.md` | it fills `state.js`: every sentence on the dashboard |
 | `merging.md` | it asks for a merge approval, and before it merges |
@@ -46,6 +47,7 @@ The skills the Vera plugin ships. Each folder with a `SKILL.md` is one skill; to
 | `allow.cjs` | Writes a worker's permission rules for an autonomy level into its worktree, and takes them back |
 | `protocolhash.cjs` | Hashes the text a hub's `protocol.md` is written from, so a resumed hub can tell the worker protocol changed |
 | `trimlog.cjs` | Moves the log lines after the 30th out of a hub's `state.js` into `log.md`, and changes nothing else |
+| `verdict.cjs` | Reads a saved review verdict: records the round in the walkthrough's `review`, prints the blocking findings, and prints the `REVIEW:` message for the worker |
 
 ### `hub/templates/`
 
