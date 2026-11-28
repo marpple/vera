@@ -27,7 +27,9 @@ function stateText(list, opts = {}) {
     const group = list.slice(i, i + (opts.perLine || 1)).map((e, j) => render(e, i + j, opts.mixed));
     rows.push("    " + group.join(", "));
   }
-  let body = rows.map((r, i) => r + (i < rows.length - 1 ? "," : ""));
+  let body = rows.map((r, i) => r + (i < rows.length - 1 || opts.trailingComma ? "," : ""));
+  if (opts.afterThirtieth && body.length > 29) body[29] += "   // end of the 30th";
+  if (opts.lastComment) body.push("    // the last line before the bracket");
   if (opts.comments && body.length > 40) {
     body[9] += "\n    // a note, with ] and \"quotes\" and 'these'\n    /* and a block ] , */";
     body[39] += "\n    /* tail note ] , */";
@@ -77,8 +79,10 @@ function checkTrim(text, list, extra = {}) {
   assert.ok(r.stdout.startsWith(`ok: moved ${list.length - 30} log lines to log.md, kept 30`), r.stdout);
   const after = load(dir);
   assert.deepStrictEqual(after.log, before.log.slice(0, 30));
-  const { log: a, ...restAfter } = after;
-  const { log: b, ...restBefore } = before;
+  const restAfter = { ...after };
+  const restBefore = { ...before };
+  delete restAfter.log;
+  delete restBefore.log;
   assert.deepStrictEqual(restAfter, restBefore);
   assert.deepStrictEqual(logLines(dir), list.slice(30).map(asLine));
   return { dir, ...extra };
@@ -155,6 +159,10 @@ test("text that looks like structure inside an entry does not move the cut", () 
     { comments: true },
     { laneLog: true },
     { crlf: true },
+    { trailingComma: true },
+    { lastComment: true },
+    { afterThirtieth: true },
+    { trailingComma: true, lastComment: true, afterThirtieth: true, crlf: true },
     { crlf: true, quoteKeys: true, mixed: true, perLine: 3, comments: true, laneLog: true },
   ];
   for (const opts of variants) {
@@ -188,16 +196,34 @@ test("a later run puts the newer lines on top of log.md", () => {
   assert.deepStrictEqual(load(dir).log, grown.slice(0, 30));
 });
 
-test("a run cut short after log.md was written does not write the lines twice", () => {
+test("a run cut short after log.md was written loses nothing", () => {
   const list = entries(45);
   const dir = hub(stateText(list));
-  const md = list.slice(30).map(asLine).join("\n") + "\n";
-  fs.writeFileSync(path.join(dir, "log.md"), md);
+  const moved = list.slice(30).map(asLine);
+  fs.writeFileSync(path.join(dir, "log.md"), moved.join("\n") + "\n");
   const r = run(dir);
   assert.strictEqual(r.status, 0, r.stdout);
-  assert.strictEqual(read(dir, "log.md"), md);
-  assert.strictEqual(logLines(dir).length, 15);
+  assert.deepStrictEqual(logLines(dir), moved.concat(moved));
   assert.strictEqual(load(dir).log.length, 30);
+});
+
+test("lines that repeat the top of log.md are still moved", () => {
+  const list = entries(30).concat(Array(5).fill("same"));
+  const dir = hub(stateText(list));
+  fs.writeFileSync(path.join(dir, "log.md"), "- same\n".repeat(5) + "- old\n");
+  const r = run(dir);
+  assert.strictEqual(r.status, 0, r.stdout);
+  assert.deepStrictEqual(logLines(dir), Array(10).fill("- same").concat(["- old"]));
+  assert.strictEqual(logLines(dir).length, 11);
+  assert.strictEqual(load(dir).log.length, 30);
+});
+
+test("a log.md with no newline at its end still gets the new lines above the old ones", () => {
+  const list = entries(33);
+  const dir = hub(stateText(list));
+  fs.writeFileSync(path.join(dir, "log.md"), "- old 1\n- old 2");
+  assert.strictEqual(run(dir).status, 0);
+  assert.deepStrictEqual(logLines(dir), list.slice(30).map(asLine).concat(["- old 1", "- old 2"]));
 });
 
 test("it refuses and leaves both files when it cannot be sure", () => {
@@ -210,6 +236,7 @@ test("it refuses and leaves both files when it cannot be sure", () => {
     { name: "log not an array", text: 'window.HUB_STATE = { log: "x" };\n' },
     { name: "log built by an expression", text: `var MORE = ${forty};\nwindow.HUB_STATE = {\n  log: ["a"].concat(MORE)\n};\n` },
     { name: "log is a variable", text: `var L = ${forty};\nwindow.HUB_STATE = {\n  log: L\n};\n` },
+    { name: "a circular value", text: 'window.HUB_STATE = { self: null, log: ' + forty + ' };\nwindow.HUB_STATE.self = window.HUB_STATE;\n' },
     { name: "log.md is a directory", text: stateText(entries(45)), md: "dir" },
     { name: "log.md exists and the log is built", text: `var MORE = ${forty};\nwindow.HUB_STATE = { log: ["a"].concat(MORE) };\n`, md: "- old\n" },
   ];

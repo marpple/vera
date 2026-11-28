@@ -4,7 +4,10 @@
 // Only the tail of the `log` array leaves state.js: every other byte of the file stays as the hub wrote it.
 //   node <this skill's folder>/scripts/trimlog.cjs <hub folder>
 // Exit 0: "ok: moved <n> log lines to log.md, kept 30", or "ok: nothing to move, <k> log lines".
-// Exit 2: "refused: <reason>", and neither file was changed.
+// Exit 2: "refused: <reason>". Every refusal leaves state.js as it was. It leaves log.md as it was too, except when state.js
+// cannot be written (or changed under the run) after log.md was: then the moved lines are in both files.
+// The moved lines always go on top of log.md, and a run interrupted between the two writes leaves them in both files.
+// The next run then writes them to log.md a second time: a duplicate, never a loss.
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -29,7 +32,8 @@ function parse(src) {
   try { vm.runInNewContext(src, ctx, { timeout: 1000 }); }
   catch (e) { return refuse(`state.js does not run (${e.message})`); }
   const state = ctx.window.HUB_STATE;
-  return state === undefined ? undefined : JSON.parse(JSON.stringify(state));
+  try { return state === undefined ? undefined : JSON.parse(JSON.stringify(state)); }
+  catch (e) { return refuse(`HUB_STATE cannot be copied as JSON (${e.message})`); }
 }
 
 // Walks the code of src from `from`, skipping strings and comments. onCode(i, c) gets each code character, and a string's
@@ -120,8 +124,11 @@ const out = src.slice(0, cutFrom) + src.slice(cutTo);
 
 const after = parse(out);
 const moved = before.log.slice(KEEP);
-const { log: keptLog, ...restAfter } = after || {};
-const { log: oldLog, ...restBefore } = before;
+const restAfter = { ...after };
+delete restAfter.log;
+const keptLog = (after || {}).log;
+const restBefore = { ...before };
+delete restBefore.log;
 let same = false;
 try {
   assert.deepStrictEqual(keptLog, before.log.slice(0, KEEP));
@@ -130,10 +137,11 @@ try {
 } catch {}
 if (!same) refuse("the result did not match");
 
-// log.md first, so a run cut short leaves the lines in both files, and the next run does not write them again.
+// log.md first, so a run cut short leaves the lines in both files and loses none.
 const line = e => "- " + (typeof e === "string" ? e : JSON.stringify(e)).replace(/\r\n|\r|\n/g, " ");
 const text = moved.map(line).join("\n") + "\n";
 const old = read(mdPath, "");
-if (!old.startsWith(text)) writeAtomic(mdPath, text + old);
+writeAtomic(mdPath, text + old);
+if (read(statePath) !== src) refuse("state.js changed while the script ran");
 writeAtomic(statePath, out);
 console.log(`ok: moved ${moved.length} log lines to log.md, kept ${KEEP}`);
