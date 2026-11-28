@@ -43,12 +43,12 @@ const run = (...args) => {
 const base = () => ({ item: "N1", round: 1, title: "t", qa: [{ q: "q", a: "a" }], review: [] });
 const rounds = w => w.review.map(r => r.round);
 
-test("check prints the verdict, the counts, and the place of every blocking finding", () => {
+test("check prints the verdict, the counts, and the place and the first words of every blocking finding", () => {
   const c = run("check", verdictFile(CHANGES));
   assert.strictEqual(c.status, 0);
   assert.strictEqual(c.lines[0], "ok: CHANGES, 2 blocking, 1 non-blocking");
-  assert.strictEqual(c.lines[1], "1. src/a.js:12");
-  assert.strictEqual(c.lines[2], "2. test/a.test.js:7");
+  assert.strictEqual(c.lines[1], "1. src/a.js:12 — the retry loop never stops");
+  assert.strictEqual(c.lines[2], "2. test/a.test.js:7 — the test passes without the fix");
   assert.strictEqual(c.lines.length, 3);
   const p = run("check", verdictFile(PASS));
   assert.strictEqual(p.status, 0);
@@ -246,15 +246,18 @@ test("record refuses a walkthrough that is not plain data, a bad round, and a ba
   assert.deepStrictEqual(fs.readdirSync(path.dirname(good)), ["walk.js"]);
 });
 
-test("a message joined with && is sent only when reply printed one", () => {
-  const v = verdictFile(CHANGES);
-  const go = (...extra) => spawnSync("sh", ["-c", 'node="$1"; shift; body=$("$node" "$@") && echo "SENT: $body"', "sh", process.execPath, SCRIPT, "reply", v, ...extra], { encoding: "utf8" });
-  const refused = go("--except", "1,2");
-  assert.notStrictEqual(refused.status, 0);
-  assert.ok(!refused.stdout.includes("SENT:"), refused.stdout);
+test("a message joined with && is sent only when reply printed one, and is not evaluated by the shell", () => {
+  const nasty = "[blocking] src/a.js:1 — the `echo BACKTICK` and $(echo PWNED) and $HOME and 'single' and \"double\" and ; stay text — why — fix it; now";
+  const v = verdictFile(CHANGES + "\n" + nasty);
+  const go = (...extra) => spawnSync("sh", ["-c", 'a="$1"; b="$2"; c="$3"; shift 3; body=$("$a" "$b" reply "$c" "$@") && printf \'%s\' "$body"', "sh", process.execPath, SCRIPT, v, ...extra], { encoding: "utf8" });
+  const direct = run("reply", v).out;
+  assert.ok(direct.includes("$(echo PWNED)") && direct.includes("`echo BACKTICK`") && direct.includes("$HOME"));
   const sent = go();
   assert.strictEqual(sent.status, 0);
-  assert.ok(sent.stdout.startsWith("SENT: REVIEW:"), sent.stdout);
+  assert.strictEqual(sent.stdout, direct.replace(/\n$/, ""));
+  const refused = go("--except", "1,2,3");
+  assert.notStrictEqual(refused.status, 0);
+  assert.strictEqual(refused.stdout, "");
 });
 
 test("reply prints REVIEW: and the blocking findings, minus the ones named in --except", () => {
@@ -394,7 +397,11 @@ test("after the verdict the hub saves it as it came, runs verdict.cjs, and sends
   assert.match(after, /A `cannot parse:` line is not a message, so never send it/);
   assert.match(after, /The non-blocking findings stay in the saved verdict, `<hub>\/reviews\/<id>-r<n>\.md`/);
   assert.match(readSkill("references/cleanup.md"), /the non-blocking findings in the saved verdicts under `<hub>\/reviews\/`/);
-  assert.match(after, /It prints `ok:` with the verdict and the counts, then the number and the place of every blocking finding \(`1\. <file>:<line>`\): their text is in the answer you just read, so the script does not print it again\./);
+  assert.match(after, /Both commands print `ok:` with the verdict and the counts, then the number, the place and the first words of every blocking finding \(`1\. <file>:<line> — <first words>…`\): the whole text is in the answer you just read, so the script does not print it again\./);
+  const gate = after.indexOf("First see whether the developer's language is the PR language");
+  assert.ok(gate > 0 && gate < after.indexOf("verdict.cjs record"), "the language condition comes before the record command");
+  assert.ok(after.includes("do not run `record`"));
+  assert.match(after, /the numbers are the ones `record` or `check` printed, which count only the blocking findings\. The `&&` sends only when the script printed a `REVIEW:` message\. When the script refused, nothing was sent: run it alone and read its line\./);
   assert.match(after, /with `verdict` exactly `"PASS"` or `"CHANGES"` and `level` exactly `"blocking"` or `"non-blocking"`: the page compares these words/);
   assert.match(after, /You read them in the reviewer's answer, and `record` or `check` numbered them, so do not write them again: let the script write the message\./);
   assert.match(after, /`fix` is always yours to write, in the same kind of heredoc: the script leaves it empty on a new finding and keeps the ones already written/);
@@ -408,7 +415,7 @@ test("a finding that joins what is wrong and why is read as what and fix", () =>
   const c = run("check", v);
   assert.strictEqual(c.status, 0);
   assert.strictEqual(c.lines[0], "ok: CHANGES, 1 blocking, 1 non-blocking");
-  assert.strictEqual(c.lines[1], "1. tests/trimlog.test.cjs:191");
+  assert.strictEqual(c.lines[1], "1. tests/trimlog.test.cjs:191 — " + Array.from(TWO.split(" — ")[1]).slice(0, 60).join("") + "…");
   assert.strictEqual(c.lines.length, 2);
   assert.strictEqual(run("reply", v).out, "REVIEW:\n1. " + TWO + "\n");
   const file = walkFile({ item: "N1", round: 1, review: [] });
@@ -428,29 +435,51 @@ test("a finding that joins what is wrong and why is read as what and fix", () =>
 
 test("from the fourth separator on, the rest belongs to the fix", () => {
   const v = verdictFile("VERDICT: CHANGES\n[blocking] src/a.js:1 — a — b — c — d — e\n");
-  assert.strictEqual(run("check", v).lines[1], "1. src/a.js:1");
+  assert.strictEqual(run("check", v).lines[1], "1. src/a.js:1 — a");
   assert.strictEqual(run("reply", v).out, "REVIEW:\n1. src/a.js:1 — a — b — c — d — e\n");
   const file = walkFile({ item: "N1", round: 1, review: [] });
   assert.strictEqual(run("record", v, file, "--round", "1", "--head", "d4e5f6a").status, 0);
   assert.strictEqual(readWalk(file).review[0].findings[0].what, "a — b");
 });
 
-test("check and record print the place of each blocking finding, and reply prints its text", () => {
+test("check and record print the place and the first words of each blocking finding, and reply prints its text", () => {
+  const w60 = "w".repeat(60), w61 = "w".repeat(61);
+  const emoji = "a".repeat(59) + "😀😀tail";
+  const korean = "가".repeat(61);
   const text = [
     "VERDICT: CHANGES",
     "[blocking] src/a.js:12 — the retry loop never stops — a failing upstream hangs the request — cap it at 3 tries",
     "[blocking] src/a.js:40-44 — the name `tmp` says nothing — the next reader has to trace it — call it `pending`",
+    `[blocking] b.js:1 — ${w60} — why — fix`,
+    `[blocking] b.js:2 — ${w61} — why — fix`,
+    `[blocking] b.js:3 — ${emoji} — why — fix`,
+    `[blocking] b.js:4 — ${korean} — why — fix`,
     "[non-blocking] src/b.js:3 — unused import — noise — remove it",
   ].join("\n");
   const v = verdictFile(text);
-  const want = "ok: CHANGES, 2 blocking, 1 non-blocking\n1. src/a.js:12\n2. src/a.js:40-44\n";
+  const want = [
+    "ok: CHANGES, 6 blocking, 1 non-blocking",
+    "1. src/a.js:12 — the retry loop never stops",
+    "2. src/a.js:40-44 — the name `tmp` says nothing",
+    `3. b.js:1 — ${w60}`,
+    `4. b.js:2 — ${w60}…`,
+    `5. b.js:3 — ${"a".repeat(59)}😀…`,
+    `6. b.js:4 — ${"가".repeat(60)}…`,
+  ].join("\n") + "\n";
   assert.strictEqual(run("check", v).out, want);
   assert.strictEqual(run("record", v, walkFile(base()), "--round", "1", "--head", "d4e5f6a").out, want);
   const r = run("reply", v);
   assert.strictEqual(r.lines[0], "REVIEW:");
   assert.ok(r.lines[1].startsWith("1. src/a.js:12 — the retry loop never stops — "));
   assert.ok(r.lines[2].startsWith("2. src/a.js:40-44 — the name `tmp` says nothing — "));
-  assert.strictEqual(r.lines.length, 3);
+  assert.ok(r.lines[5].includes(emoji));
+  assert.strictEqual(r.lines.length, 7);
+});
+
+test("a number names the blocking findings only, in the file's order", () => {
+  const v = verdictFile("VERDICT: CHANGES\n[blocking] a.js:5 — first thing — w — f\n[non-blocking] a.js:9 — x — y — z\n[blocking] a.js:5 — second thing — w — f\n");
+  assert.deepStrictEqual(run("check", v).lines.slice(1), ["1. a.js:5 — first thing", "2. a.js:5 — second thing"]);
+  assert.strictEqual(run("reply", v, "--except", "1").out, "REVIEW:\n2. a.js:5 — second thing — w — f\n");
 });
 
 test("the page compares the words the hub is told to write by hand", () => {
