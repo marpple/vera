@@ -317,3 +317,23 @@ test("non-object entries in review and in findings do not stop a record, and the
   const r1 = w.review.find(r => r && r.round === 1);
   assert.strictEqual(r1.findings[0].fix, "kept");
 });
+
+test("recording a round replaces only the first entry with that number and keeps the others", () => {
+  const second = { round: 1, verdict: "PASS", text: "second reviewer" };
+  const r2 = { round: 2, verdict: "PASS", text: "y" };
+  const finding = { level: "blocking", file: "src/a.js", line: 12, what: "the retry loop never stops — a failing upstream hangs the request", fix: "kept" };
+  const file = walkFile({ item: "N1", review: [{ round: 1, verdict: "CHANGES", head: "d4e5f6a", findings: [finding] }, second, r2] });
+  const args = ["record", verdictFile(CHANGES), file, "--round", "1", "--head", "d4e5f6a"];
+  assert.strictEqual(run(...args).status, 0);
+  const w = readWalk(file);
+  assert.strictEqual(w.review.length, 3);
+  const texts = w.review.map(r => JSON.stringify(r));
+  assert.ok(texts.includes(JSON.stringify(second)));
+  assert.ok(texts.includes(JSON.stringify(r2)));
+  const fresh = w.review.filter(r => r.verdict === "CHANGES");
+  assert.strictEqual(fresh.length, 1);
+  assert.strictEqual(fresh[0].findings[0].fix, "kept");
+  const bytes = fs.readFileSync(file);
+  assert.strictEqual(run(...args).status, 0);
+  assert.ok(fs.readFileSync(file).equals(bytes));
+});

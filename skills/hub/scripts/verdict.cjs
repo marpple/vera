@@ -13,7 +13,7 @@
 // <file>:<line>-<line>, then what, why, fix, each after " — " (U+2014) or " – " (U+2013); from the fourth separator on, the text belongs to fix.
 // PASS with a blocking line, or CHANGES with none, is refused.
 // record: the round { round, verdict, head, findings: [{ level, file, line, what: "<what> — <why>", fix: "" }] } goes into the
-// walkthrough's `review` array (made if missing). A round already there is replaced, and a non-empty fix of a finding with the same
+// walkthrough's `review` array (made if missing). The first round already there with this number is replaced in its place (other entries with the same number are kept), and a non-empty fix of a finding with the same
 // level, file, line, and what moves to the new one. A review that is neither missing, null, nor a list is refused. Other rounds are
 // kept exactly as they are (rounds without a numeric round sort last, in their order). --from copies every entry of the earlier walkthrough's review in its order, except a numbered round whose number the target held before the copy and an unnumbered entry the target already holds as identical JSON.
 // The walkthrough is written once, after every check, to a temp file next to it and renamed over it; text that would not change is not written.
@@ -87,8 +87,8 @@ function record(v, walkFile, round, head, fromFile) {
       return { ...made, fix: kept ? kept.fix : "" };
     }),
   };
-  const rest = review.filter(r => !(r && r.round === round));
-  rest.push(entry);
+  const rest = review.slice();
+  if (old) rest[rest.indexOf(old)] = entry; else rest.push(entry);
   const num = r => r && typeof r.round === "number";
   w.review = rest.sort((a, b) => (num(a) && num(b) ? a.round - b.round : num(a) ? -1 : num(b) ? 1 : 0));
   const text = "window.HUB_WALK = " + JSON.stringify(w, null, 1) + ";\n";
