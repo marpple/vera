@@ -403,3 +403,58 @@ test("a hash the resume could not convert is reviewed, not sent back for a round
   assert.match(bullet, /If the hash you kept after APPROVED already equals what the command without --v1 prints, there is nothing to do/);
   assert.match(skill, /7\. A PR that changes what guards the run or the repo: CI workflows/);
 });
+
+// A hub once asked "start the batch merge?" and merged into a branch that deploys to production by itself, before the
+// check that repo requires. The question never said what the merge would set off. Each repo requires something
+// different before a merge, and many nothing, so the hub says only what the repo's own documents say.
+test("a merge question opens with what the merge sets off and the steps the repo requires that are not yet done", () => {
+  const skill = read(path.join(skillDir, "SKILL.md"));
+  const merging = read(path.join(refDir, "merging.md"));
+  const dashboard = read(path.join(refDir, "dashboard.md"));
+  const step2 = skill.split("\n").find((l) => l.startsWith("2. **Read the repo, then capture the spec.**"));
+  assert.match(step2, /what a merge into the base branch sets off[^\n]*what the repo requires before a merge/);
+  assert.match(step2, /write `unknown`, never a guess/);
+  const step3 = skill.slice(skill.indexOf("3. **Confirm the spec and the standing choices.**"), skill.indexOf("4. **Plan items**"));
+  assert.match(step3, /does a merge into `<base>` deploy by itself, and what must be done before one/);
+  assert.match(section(skill, "Autonomy levels"), /8\. A merge while a step the repo requires before a merge is one the developer has not said is done/);
+  const sets = section(merging, "What a merge sets off");
+  assert.ok(sets, "merging.md has no '## What a merge sets off' section");
+  assert.match(sets, /Every message that asks for a merge or offers one, for one item or many, opens with both/);
+  assert.match(sets, /say only what this repo's documents and the developer's answer say, in their words, and never add a step of your own/);
+  assert.match(sets, /A repo that requires nothing gets no such line and no question about one/);
+  assert.match(sets, /A step is done only when the developer says so/);
+  assert.match(sets, /the step is open again/);
+  assert.match(step3, /An answer of nothing is written as `none`/);
+  const approval = merging.slice(merging.indexOf("## Approval"), merging.indexOf("## At High"));
+  assert.match(approval, /or before what the merge sets off and the required steps not yet done were said/);
+  assert.match(approval, /An answer to an offer of yours that left them out[^\n]*is not approval either/);
+  const ask = dashboard.split("\n").find((l) => l.startsWith("| `ask` |"));
+  assert.match(ask, /a merge approval with a required step not done/);
+  // The rest of the rule: a sentence dropped from any of these must fail here.
+  assert.match(step2, /always one line for what a merge sets off and one for what the repo requires before a merge/);
+  assert.match(step3, /you never ask about a step again in that hub/);
+  assert.match(section(skill, "Autonomy levels"), /or while what the merge sets off or what the repo requires before one is `unknown` or missing from `spec\.md`/);
+  const mistake = skill.split("\n").find((l) => l.startsWith('| Asking "merge?" or offering a batch merge'));
+  assert.ok(mistake, "SKILL.md has no common-mistake row for a bare merge question");
+  assert.match(mistake, /asking about a step no document of the repo requires/);
+  assert.match(mistake, /only the developer says a step is done/);
+  assert.match(merging, /The approval message opens with what the merge sets off and the required steps not yet done/);
+  assert.match(sets, /a hub whose `spec\.md` lacks them[^\n]*asks the developer both once, before its next merge question \(at `high`, before its next merge\), and adds the lines/);
+  assert.match(sets, /A line still `unknown`, either of the two, is said as unknown and asked, never left out/);
+  assert.match(sets, /While a required step is not done, or either line is `unknown`, the question is about that step or that line first/);
+  assert.match(sets, /in the message and in `ask`; never "merge\?" alone/);
+  assert.match(sets, /Merging without the step is the developer's choice, and only theirs/);
+  assert.match(sets, /Read them again before each merge question/);
+  assert.match(sets, /named as its document names it and with that document/);
+  assert.match(sets, /each with the walkthrough round it was said at[^\n]*and a choice to merge without the step the same way/);
+  assert.match(sets, /whose `walkthrough` is now a later round than the one recorded, the step is open again/);
+  assert.match(sets, /Read it from that decision, never from memory/);
+  assert.match(ask, /a required step not done or either line `unknown`: then it says what the merge sets off and asks about that step first/);
+  assert.match(step3, /show the two constraint lines with the document each came from/);
+  assert.match(step3, /Every merge question you ask later opens with the answer/);
+  assert.match(step2, /from those documents and the documents and skills they point to/);
+  assert.match(sets, /Green CI, a passed review, a worker's report, or your own reading of a deploy never makes one done/);
+  assert.match(sets, /Record it as an `answered` decision with their words and the items it covers/);
+  const high = merging.slice(merging.indexOf("## At High"), merging.indexOf("## Merge method"));
+  assert.match(high, /a required step the developer has not said is done, or either line `unknown` or missing from `spec\.md`, is such a hit \(stop 8\)/);
+});
