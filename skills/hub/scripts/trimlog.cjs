@@ -5,6 +5,8 @@
 //   node <this skill's folder>/scripts/trimlog.cjs <hub folder>
 // Exit 0: "ok: moved <n> log lines to log.md, kept 30", or "ok: nothing to move, <k> log lines".
 // Exit 2: "refused: <reason>". Every refusal leaves state.js as it was and removes its own temp files.
+// The refusal "state.js changed while the script ran" comes after log.md was replaced: log.md then holds the moved lines,
+// and the next run adds them again (a duplicate, never a loss).
 // The writes go in this order: the new state.js text to a temp file, log.md replaced (the moved lines go on top of it),
 // state.js read again and compared with what the run started from, then the temp file renamed over state.js.
 // Only a rename is left after log.md changed. A run interrupted after log.md was replaced leaves the moved lines in both
@@ -106,7 +108,7 @@ function writeTemp(file, data) {
   tmps.push(tmp);
   try {
     const fd = fs.openSync(tmp, "w");
-    try { fs.writeSync(fd, data); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+    try { fs.writeFileSync(fd, data); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
   } catch (e) { refuse(`${path.basename(file)} cannot be written (${e.code || e.message})`); }
   return tmp;
 }
@@ -117,61 +119,61 @@ function rename(tmp, file) {
 }
 
 function main() {
-const buffer = (() => {
-  try { return fs.readFileSync(statePath); }
-  catch (e) { return refuse(`state.js cannot be read (${e.code || e.message})`); }
-})();
-const src = buffer.toString("utf8");
-if (!Buffer.from(src, "utf8").equals(buffer)) refuse("state.js is not valid UTF-8");
-const before = parse(src, "state.js");
-if (before === undefined) refuse("state.js sets no HUB_STATE");
-if (before === null || typeof before !== "object" || Array.isArray(before)) refuse("HUB_STATE is not an object");
-if (!Array.isArray(before.log)) refuse("HUB_STATE has no log array");
-if (before.log.length <= KEEP) {
-  console.log(`ok: nothing to move, ${before.log.length} log lines`);
-  process.exit(0);
-}
+  const buffer = (() => {
+    try { return fs.readFileSync(statePath); }
+    catch (e) { return refuse(`state.js cannot be read (${e.code || e.message})`); }
+  })();
+  const src = buffer.toString("utf8");
+  if (!Buffer.from(src, "utf8").equals(buffer)) refuse("state.js is not valid UTF-8");
+  const before = parse(src, "state.js");
+  if (before === undefined) refuse("state.js sets no HUB_STATE");
+  if (before === null || typeof before !== "object" || Array.isArray(before)) refuse("HUB_STATE is not an object");
+  if (!Array.isArray(before.log)) refuse("HUB_STATE has no log array");
+  if (before.log.length <= KEEP) {
+    console.log(`ok: nothing to move, ${before.log.length} log lines`);
+    process.exit(0);
+  }
 
-const open = findLog(src);
-if (open < 0) refuse("cannot find the log array in the text of state.js");
-const { close, commas } = elements(src, open);
-if (close < 0 || commas.length < KEEP) refuse(`cannot find the end of log line ${KEEP}`);
-if (![",", "}"].includes(nextCode(src, close + 1))) refuse("cannot read the end of the log as a plain list");
+  const open = findLog(src);
+  if (open < 0) refuse("cannot find the log array in the text of state.js");
+  const { close, commas } = elements(src, open);
+  if (close < 0 || commas.length < KEEP) refuse(`cannot find the end of log line ${KEEP}`);
+  if (![",", "}"].includes(nextCode(src, close + 1))) refuse("cannot read the end of the log as a plain list");
 
-// Cut from the comma after the 30th element up to the whitespace that precedes the closing "]".
-const cutFrom = commas[KEEP - 1];
-let cutTo = close;
-while (/\s/.test(src[cutTo - 1])) cutTo--;
-if (cutTo <= cutFrom) refuse(`cannot find the end of log line ${KEEP}`);
-const out = src.slice(0, cutFrom) + src.slice(cutTo);
+  // Cut from the comma after the 30th element up to the whitespace that precedes the closing "]".
+  const cutFrom = commas[KEEP - 1];
+  let cutTo = close;
+  while (/\s/.test(src[cutTo - 1])) cutTo--;
+  if (cutTo <= cutFrom) refuse(`cannot find the end of log line ${KEEP}`);
+  const out = src.slice(0, cutFrom) + src.slice(cutTo);
 
-const after = parse(out, "the result");
-const moved = before.log.slice(KEEP);
-const restAfter = { ...after };
-delete restAfter.log;
-const keptLog = (after || {}).log;
-const restBefore = { ...before };
-delete restBefore.log;
-let same = false;
-try {
-  assert.deepStrictEqual(keptLog, before.log.slice(0, KEEP));
-  assert.deepStrictEqual(restAfter, restBefore);
-  same = true;
-} catch {}
-if (!same) refuse("the result did not match");
+  const after = parse(out, "the result");
+  const moved = before.log.slice(KEEP);
+  const restAfter = { ...after };
+  delete restAfter.log;
+  const keptLog = (after || {}).log;
+  const restBefore = { ...before };
+  delete restBefore.log;
+  let same = false;
+  try {
+    assert.deepStrictEqual(keptLog, before.log.slice(0, KEEP));
+    assert.deepStrictEqual(restAfter, restBefore);
+    same = true;
+  } catch {}
+  if (!same) refuse("the result did not match");
 
-// state.js's text goes to its temp file first, so a state.js that cannot be written changes nothing; log.md is replaced
-// before the rename, so a run cut short leaves the lines in both files and loses none.
-const line = e => "- " + (typeof e === "string" ? e : JSON.stringify(e)).replace(/\r\n|\r|\n/g, " ");
-const text = moved.map(line).join("\n") + "\n";
-const old = read(mdPath, "");
-const stateTmp = writeTemp(statePath, Buffer.from(out, "utf8"));
-rename(writeTemp(mdPath, text + old), mdPath);
-let now;
-try { now = fs.readFileSync(statePath); } catch (e) { now = null; }
-if (!now || !now.equals(buffer)) refuse("state.js changed while the script ran");
-rename(stateTmp, statePath);
-console.log(`ok: moved ${moved.length} log lines to log.md, kept ${KEEP}`);
+  // state.js's text goes to its temp file first, so a state.js that cannot be written changes nothing; log.md is replaced
+  // before the rename, so a run cut short leaves the lines in both files and loses none.
+  const line = e => "- " + (typeof e === "string" ? e : JSON.stringify(e)).replace(/\r\n|\r|\n/g, " ");
+  const text = moved.map(line).join("\n") + "\n";
+  const old = read(mdPath, "");
+  const stateTmp = writeTemp(statePath, Buffer.from(out, "utf8"));
+  rename(writeTemp(mdPath, text + old), mdPath);
+  let now;
+  try { now = fs.readFileSync(statePath); } catch (e) { now = null; }
+  if (!now || !now.equals(buffer)) refuse("state.js changed while the script ran");
+  rename(stateTmp, statePath);
+  console.log(`ok: moved ${moved.length} log lines to log.md, kept ${KEEP}`);
 }
 
 try { main(); }
