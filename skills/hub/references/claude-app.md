@@ -12,7 +12,7 @@ Quoted strings in this file are examples, in English: write the same meaning in 
 | `orca orchestration run-create`, `run-use`, `runId` | the hub's own session id, `hubSession` |
 | `orca orchestration worker-start` | `mcp__ccd_session__start_session` ("Starting a worker") |
 | `send`, `reply --id <askId>` | `SendMessage` to the worker's session ("Hub to worker") |
-| a worker's `ask`, `question`, `status`, `worker_done` | a `SendMessage` to the hub whose first line starts with `VERA` ("Worker to hub") |
+| a worker's `ask`, `question`, `status`, `worker_done` | a text in the worker's own turn whose first line starts with `VERA`, which `sync.cjs --wait` hands to the hub ("Worker to hub") |
 | `escalation` with `stopReason` | a worker that went idle without `ask`, `question`, or `done` ("Escalations") |
 | `orca orchestration worker-read` | `mcp__ccd_session_mgmt__list_events` on its session |
 | `orca orchestration worker-stop` | `mcp__ccd_session_mgmt__stop_session` |
@@ -24,11 +24,11 @@ Quoted strings in this file are examples, in English: write the same meaning in 
 
 ## Hub folder
 
-`<home>/.vera/workspaces/<repo>/_hub/<feature-slug>/`, where `<home>` is the home directory (`echo $HOME`) and `<repo>` is the name of the repo's main checkout folder. Everything SKILL.md, "Hub folder", says about it holds. `sync.cjs` also writes `sync.port` there ("Pages").
+`<home>/.vera/workspaces/<repo>/_hub/<feature-slug>/`, where `<home>` is the home directory (`echo $HOME`) and `<repo>` is the name of the repo's main checkout folder. Everything SKILL.md, "Hub folder", says about it holds. `sync.cjs` also writes `sync.port` there ("Pages"), and `sync.cjs --wait` writes `wait.pid` ("Waking the hub").
 
 ## The hub's identity
 
-`mcp__ccd_session_mgmt__get_session` with `session_id: "self"` gives this session's id (`local_…`) and title. In SKILL.md step 5, in place of `run-create`, store them in `state.js` as `hubSession` and `hubOldTitle`, with `runtime: "claude-app"`. Every worker sends its messages to `hubSession`.
+`mcp__ccd_session_mgmt__get_session` with `session_id: "self"` gives this session's id (`local_…`) and title. In SKILL.md step 5, in place of `run-create`, store them in `state.js` as `hubSession` and `hubOldTitle`, with `runtime: "claude-app"`. Workers never message `hubSession`: they write their VERA messages into their own transcripts ("Worker to hub").
 
 ## Starting a worker
 
@@ -42,26 +42,28 @@ In SKILL.md step 6, in place of `orca orchestration worker-start` and the `orca 
 | `branch_name` | `<branch-slug>` (the app adds its prefix and a suffix; the worker renames it: "Protocol on the Claude app") |
 | `title` | `<id> · <short title>` |
 | `name` | `<id>-<slug>` in lowercase, `[a-z0-9-]`, at most 24 characters |
-| `prompt` | `You are the Vera worker for <id>. Read <hub>/specs/<id>.md in full before anything else and follow it exactly. Send every hub message with SendMessage to <hubSession>.` |
+| `prompt` | `You are the Vera worker for <id>. Read <hub>/specs/<id>.md in full before anything else and follow it exactly. Write every hub message as your own text, never with SendMessage.` |
 | `background` | the feature's goal in two or three sentences from `spec.md` (at least 80 characters) |
 | `model` | the alias you choose for this item ([worker-model.md](worker-model.md)); omit it only when the lookup there failed, to use the hub's model. The tool has no effort field here: that file says what a step is without one |
 | `permission_mode` | omit it: the worker inherits the hub's mode. A worker in another mode holds the hub's messages for approval |
 
-**Which turns can start a worker.** The app refuses `start_session` in a turn that another session's message started (a worker's VERA message, or a `<side-sessions-event>` that does not follow the developer's own turn) and offers a proposal card instead. So start workers only in a turn the developer started: step 6 on a new hub, a resume, or any turn where the developer answered or asked something. When a worker's message frees a slot (a `worker_done`, a merge approval you handled in that turn), do not call `start_session` and do not propose a card: set each item that can now start to `ext` "Starts at your next message", add one to-do to `ask` saying that any reply to the hub starts it ("Reply anything to the hub and N3 starts"), and start it in the developer's next turn. A refusal in a turn you thought was the developer's means the same: leave the item waiting as above, never retry in a loop.
+**Which turns can start a worker.** The app refuses `start_session` in a turn that another session's message or an automated event started (the exit of `sync.cjs --wait`, a message from a worker, or a `<side-sessions-event>` that does not follow the developer's own turn) and offers a proposal card instead. So start workers only in a turn the developer started: step 6 on a new hub, a resume, or any turn where the developer answered or asked something. When a worker's message frees a slot (a `worker_done`, a merge approval you handled in that turn), do not call `start_session` and do not propose a card: set each item that can now start to `ext` "Starts at your next message", add one to-do to `ask` saying that any reply to the hub starts it ("Reply anything to the hub and N3 starts"), and start it in the developer's next turn. A refusal in a turn you thought was the developer's means the same: leave the item waiting as above, never retry in a loop.
 
 The result gives the worker's session id. `mcp__ccd_session_mgmt__get_session` on that id gives its worktree path. Write `session`, `path`, and the item's `branch` into its `workers` row before you start the next worker. At `medium` or `high`, run `allow.cjs write <its path> <level>` right after the receipt: the app creates the worktree as the session starts, so the list cannot exist before it, and a worker that still prompts is answered by the developer as at `low`.
 
 ## Worker to hub
 
-Every worker message is one `SendMessage` call with `to: <hubSession>`. Its first line is:
+A worker never calls `SendMessage`. In the app that tool always stops on a prompt the developer must allow, whatever the permission rules say (measured on 2026-11-23: an allow rule for it in the worktree's settings changed nothing, while a Bash allow rule written the same way took effect at once), and the prompt shows the worker's question with only Deny and Allow, where the developer cannot choose an answer. So every worker message is a text the worker writes in its own turn, alone in its text block. Its first line is:
 
 ```
 VERA <kind> <item-id>[ phase=<phase>][ outcome=<succeeded|failed>]: <subject>
 ```
 
-The body follows on the next lines. A worker's message starts a hub turn, or waits until the current turn ends.
+The body follows on the next lines. `sync.cjs` reads it from the worker's transcript.
 
-| Orca | Claude app | After sending |
+**Waking the hub.** End every hub turn with `node <hub>/sync.cjs --wait` run in the background (Bash with `run_in_background`). One runs per hub folder: a new wait replaces the running one, which exits 3 and prints nothing, so after a compaction or in a new session start it again without checking. When the loop's `question` row has you ask the developer, start from the (a), (b), (c) options in the body, keeping their words, add impact and your recommendation as that row says, and never offer an option the body does not give; at `high`, or for a technical question, decide as that row says. Any exit but 0 with lines, 3, and 2, such as 143 when something outside ended the wait, leaves no wait running: start it again. A wait that exits 3 was replaced by a newer one, which is running: it needs nothing, and a turn that only its exit started ends without starting another wait (that would replace the running one, whose exit would wake you again). A turn that also brought lines to handle, or the developer's message, ends with the wait as usual. It exits once a worker has something for you, printing one line each, after the line's time, and under a VERA line the message's body, each line indented by four spaces (the options and recommendation of a question, a `SUMMARY:`): a VERA message newer than `lastMsgAt`, or `stopped <id>: <its last text>` for a worker whose turn ended after `lastMsgAt` without `ask`, `question`, or `done`, whenever it ended ("Escalations"). Its exit starts your next turn. A line whose time is not after `lastMsgAt` was handled already (an earlier wait printed it too): skip it. Handle every other line as the loop says (the developer's answers to product questions go through AskUserQuestion, with options), set `lastMsgAt` to the newest time among the lines you handled, so a handled stop does not wake you again, and start the wait again before you end the turn. A wait that exits 1 could not read `state.js`: fix it, then start the wait again. A wait that prints `closed`, or exits 2 (this hub's `runtime` is not `claude-app`), is not started again.
+
+| Orca | Claude app | After writing it |
 |---|---|---|
 | `send --type status --phase <p>` | `VERA status <id> phase=<p>: <subject>` | the worker keeps working |
 | `ask --question "<q>"` | `VERA ask <id>: <q>` | the worker ends its turn |
@@ -70,13 +72,13 @@ The body follows on the next lines. A worker's message starts a hub turn, or wai
 
 ## Hub to worker
 
-`reply --id <askId>` and `send` are both `SendMessage` with `to: <the worker's session id>`. The message arrives in the worker as a new turn and wakes it when it is idle. `askId` holds the `at` time of the ask being answered, from live.js `hub` (run `node <hub>/sync.cjs --once` first when it is not listed yet); clear it when you reply. A session keeps its id however often you write to it, so the Loop's rule about the new dispatch id a `send` returns does not apply here.
+`reply --id <askId>` and `send` are both `SendMessage` with `to: <the worker's session id>`. The app asks the developer to allow each one in the hub's session; the prompt carries an answer already given, so it needs no choice, only Allow. The message arrives in the worker as a new turn and wakes it when it is idle. `askId` holds the time of the ask being answered, the time that starts its `sync.cjs --wait` line; clear it when you reply. A session keeps its id however often you write to it, so the Loop's rule about the new dispatch id a `send` returns does not apply here.
 
 ## Protocol on the Claude app
 
 When you write `protocol.md` and each task part from [worker-spec.md](worker-spec.md), make these changes, and keep every other word:
 
-- Add this rule before rule 1: `0. MESSAGES. Every message to the hub is one SendMessage call with to: <hubSession>. Its first line is VERA <kind> <item-id>[ phase=<phase>][ outcome=<succeeded|failed>]: <subject>, the body follows on the next lines. Kinds: status (keep working after it), ask and question (end your turn after it; the hub's reply wakes you), done (your worker_done; end your turn after it). When the hub sends HUB MOVED: send every VERA message to <id>, use that id from then on. Ending a turn without ask, question, or done tells the hub you are stuck.`
+- Add this rule before rule 1: `0. MESSAGES. Never call SendMessage: in the app it stops on a prompt the developer cannot answer. Every message to the hub is a text you write, alone in its text block, whose first line is VERA <kind> <item-id>[ phase=<phase>][ outcome=<succeeded|failed>]: <subject>; the body follows on the next lines, and the hub reads it from your transcript. Kinds: status (keep working after it), ask and question (end your turn with it as your last text; the hub's reply wakes you), done (your worker_done; end your turn with it as your last text). For a question, list the options in the body as (a), (b), (c) with your recommendation; the hub asks the developer with them. Ending a turn without ask, question, or done tells the hub you are stuck.`
 - Write each `orca orchestration ask --question "<q>"` as `VERA ask <item-id>: <q>`, and the product question in rule 8 as `VERA question <item-id>: <q>`, with "the hub's reply wakes you" for "Orca wakes you".
 - Write each `orca orchestration send --type status --phase <p> --subject "<item-id>: <s>" --body "<b>"` as `VERA status <item-id> phase=<p>: <s>` (the id once, in the prefix) with `<b>` as the body, and `send --phase approval` as `VERA status <item-id> phase=approval: <the command it waits on>`.
 - Write each worker_done with `--outcome <o>`, and "the worker_done command from your Orca preamble", as `VERA done <item-id> outcome=<o>: <subject>`.
@@ -86,7 +88,7 @@ When you write `protocol.md` and each task part from [worker-spec.md](worker-spe
 
 ## Escalations
 
-The app tells the hub when the sessions it started have all ended their turns (a `<side-sessions-event>` message), not when one of several does. So at every wake, check `mcp__ccd_session_mgmt__list_sessions` with `linked: true`. A worker that is idle and whose last VERA message is a `status` (or that sent none) stopped without `ask`, `question`, or `done`: handle it as the loop's `escalation` row, reading it with `list_events`. The dashboard shows the same: its card says the worker stopped.
+`sync.cjs --wait` prints `stopped <id>` for a worker whose turn ended after `lastMsgAt` without `ask`, `question`, or `done`: handle that line as the loop's `escalation` row, reading the worker with `list_events`. Handle a stop only from that line, which carries the time to set `lastMsgAt` to. The app's own notes that a session you started finished a turn, or a `<side-sessions-event>`, carry nothing to handle by themselves: the wait prints the same worker's message or stop. The dashboard judges by time instead: its card says the worker stopped once it has been idle for five minutes on an active item you have not marked `waiting`, so mark the item `waiting` while its question waits on the developer.
 
 ## Sidebar
 
@@ -112,9 +114,9 @@ In "Closing the hub", step 1 checks `list_sessions` and `git worktree list` in p
 
 In SKILL.md, "Start or resume", in place of the `run-use`, `worker-list`, and `inbox` bullet:
 
-1. `mcp__ccd_session_mgmt__get_session` with `self`. When its id differs from `hubSession`, this is a new hub session: set `hubSession`, write the new id into rule 0 of `protocol.md` and of each live worker's `specs/<id>.md`, and send every live worker `HUB MOVED: send every VERA message to <your session id> from now on.` Workers started by the old session stay nested under it in the sidebar.
-2. `mcp__ccd_session_mgmt__list_sessions` with `linked: true` (empty in a new session: use the `session` ids in `workers`), `gh pr list --author @me --state open`, and `node <hub>/sync.cjs --once`, then read `<hub>/live.js`: its `hub` lists every VERA message workers sent after `lastMsgAt`. Reconcile them as the Orca bullet says.
+1. `mcp__ccd_session_mgmt__get_session` with `self`. When its id differs from `hubSession`, this is a new hub session: set `hubSession` (workers write their messages into their own transcripts, so they need no new id). Workers started by the old session stay nested under it in the sidebar.
+2. `mcp__ccd_session_mgmt__list_sessions` with `linked: true` (empty in a new session: use the `session` ids in `workers`), `gh pr list --author @me --state open`, and `node <hub>/sync.cjs --wait --now`, which prints at once, as `--wait` does, every VERA message and every stop after `lastMsgAt` (nothing when none). Reconcile them as the Orca bullet says, then start the wait ("Waking the hub").
 
 After a compaction (SKILL.md, "After a compaction"), the inbox reconcile is step 2 alone; skip step 1 unless `get_session` shows a new session id.
 
-After every event, in place of `lastMsgId`, set `lastMsgAt` to the `at` of the newest message you handled, from live.js `hub`. When live.js does not list that message yet, run `node <hub>/sync.cjs --once` and read live.js again; never use the current time, which would mark messages that arrived meanwhile from other workers as handled.
+After every event, in place of `lastMsgId`, set `lastMsgAt` to the newest time among the `sync.cjs --wait` lines you handled ("Waking the hub"). Before you move it, run `node <hub>/sync.cjs --wait --now` and handle every line it prints that you have not handled, so a message or a stop that came meanwhile, from any worker, is not skipped. Never use the current time, which would mark those as handled.
