@@ -32,6 +32,7 @@ The skills the Vera plugin ships. Each folder with a `SKILL.md` is one skill; to
 | `worker-spec.md` | it writes a worker's spec; holds the worker protocol |
 | `worker-model.md` | it starts a worker: chooses the model and the effort |
 | `review.md` | an item needs its independent review |
+| `reviewer.md` | never: the reviewer reads it, for the six checks and the form of its answer |
 | `walkthrough.md` | a worker is ready for review, a review passes, or lines change after an approval |
 | `dashboard.md` | it fills `state.js`: every sentence on the dashboard |
 | `merging.md` | it asks for a merge approval, and before it merges |

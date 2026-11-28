@@ -337,3 +337,40 @@ test("recording a round replaces only the first entry with that number and keeps
   assert.strictEqual(run(...args).status, 0);
   assert.ok(fs.readFileSync(file).equals(bytes));
 });
+
+const readSkill = rel => fs.readFileSync(path.join(__dirname, "..", "skills", "hub", rel), "utf8");
+
+test("the six checks and the answer form live in reviewer.md, and the brief only points to it", () => {
+  const reviewer = readSkill("references/reviewer.md"), review = readSkill("references/review.md");
+  for (const name of ["Spec fidelity", "Correctness", "Tests (TDD)", "Risk", "Shape", "Walkthrough"]) {
+    const re = new RegExp(`^\\d\\. ${name.replace(/[()]/g, "\\$&")}:`, "m");
+    assert.match(reviewer, re);
+    assert.ok(!re.test(review), `${name} is still in review.md`);
+  }
+  assert.match(reviewer, /`\[blocking\|non-blocking\] <file>:<line> — <what is wrong> — <why it matters> — <suggested fix>`/);
+  assert.match(reviewer, /A script reads your answer/);
+  assert.match(reviewer, /the script takes the first three as the separators/);
+  const brief = review.split("## Brief")[1].split("## After the verdict")[0];
+  assert.match(brief, /Follow <this skill's folder>\/references\/reviewer\.md/);
+  assert.match(brief, /answer only `CANNOT READ reviewer\.md`/);
+  assert.match(brief, /Read-only: do not commit, push, comment, approve, or edit files\./);
+});
+
+test("the form reviewer.md asks for is the form verdict.cjs reads", () => {
+  const reviewer = readSkill("references/reviewer.md");
+  const block = reviewer.split("## Example")[1].match(/```text\n([\s\S]*?)```/);
+  assert.ok(block, "reviewer.md has no text block under Example");
+  const r = run("check", verdictFile(block[1]));
+  assert.strictEqual(r.status, 0, r.out + r.err);
+  assert.strictEqual(r.lines[0], "ok: CHANGES, 1 blocking, 1 non-blocking");
+});
+
+test("after the verdict the hub saves it as it came, runs verdict.cjs, and sends what it prints", () => {
+  const after = readSkill("references/review.md").split("## After the verdict")[1];
+  assert.match(after, /Save the reviewer's answer as it came/);
+  assert.match(after, /scripts\/verdict\.cjs record <hub>\/reviews\/<id>-r<n>\.md <hub>\/walkthroughs\/<id>-w<k>\.js --round <n> --head <reviewHead>/);
+  assert.match(after, /A `cannot parse:` line/);
+  assert.match(after, /scripts\/verdict\.cjs check/);
+  assert.match(after, /scripts\/verdict\.cjs reply <hub>\/reviews\/<id>-r<n>\.md/);
+  assert.match(after, /`--except`/);
+});
