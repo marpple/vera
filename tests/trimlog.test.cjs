@@ -85,6 +85,12 @@ function checkTrim(text, list, extra = {}) {
   delete restBefore.log;
   assert.deepStrictEqual(restAfter, restBefore);
   assert.deepStrictEqual(logLines(dir), list.slice(30).map(asLine));
+  // The new text is the old text with one span removed and nothing added.
+  const now = read(dir, "state.js");
+  let p = 0;
+  while (p < text.length && p < now.length && text[p] === now[p]) p++;
+  assert.ok(text.endsWith(now.slice(p)), "something was added or changed");
+  assert.ok(now.length < text.length);
   return { dir, ...extra };
 }
 
@@ -237,6 +243,9 @@ test("it refuses and leaves both files when it cannot be sure", () => {
     { name: "log built by an expression", text: `var MORE = ${forty};\nwindow.HUB_STATE = {\n  log: ["a"].concat(MORE)\n};\n` },
     { name: "log is a variable", text: `var L = ${forty};\nwindow.HUB_STATE = {\n  log: L\n};\n` },
     { name: "a circular value", text: 'window.HUB_STATE = { self: null, log: ' + forty + ' };\nwindow.HUB_STATE.self = window.HUB_STATE;\n' },
+    { name: "HUB_STATE is null", text: "window.HUB_STATE = null;\n" },
+    { name: "HUB_STATE is a string", text: 'window.HUB_STATE = "x";\n' },
+    { name: "HUB_STATE is an array", text: "window.HUB_STATE = [];\n" },
     { name: "log.md is a directory", text: stateText(entries(45)), md: "dir" },
     { name: "log.md exists and the log is built", text: `var MORE = ${forty};\nwindow.HUB_STATE = { log: ["a"].concat(MORE) };\n`, md: "- old\n" },
   ];
@@ -273,7 +282,22 @@ test("the hub trims the log before it reads state.js, on a resume and after a co
 test("the hub folder table names log.md, the close reads it, and the template no longer asks the hub to count", () => {
   assert.match(readSkill("SKILL.md"), /^\| `log\.md` \| `trimlog\.cjs`/m);
   assert.match(readSkill("references/cleanup.md"), /Read `<hub>\/log\.md` together with `log` for this/);
+  assert.match(readSkill("references/cleanup.md"), /when the file exists/);
   const tpl = readSkill("templates/state.js");
   assert.ok(!/keep about 30 entries/.test(tpl));
   assert.match(tpl, /trimlog\.cjs moves the lines after the 30th to log\.md/);
+});
+
+test("it refuses a state.js that is not valid UTF-8 instead of rewriting it", () => {
+  const head = Buffer.from('window.HUB_STATE = {\n  note: "');
+  const tail = Buffer.from(`",\n  log: ${JSON.stringify(entries(40))}\n};\n`);
+  const bytes = Buffer.concat([head, Buffer.from([0xea, 0xb0]), tail]);
+  const dir = hub(null);
+  fs.writeFileSync(path.join(dir, "state.js"), bytes);
+  const r = run(dir);
+  assert.strictEqual(r.status, 2, r.stdout);
+  assert.ok(r.stdout.startsWith("refused: "), r.stdout);
+  assert.ok(fs.readFileSync(path.join(dir, "state.js")).equals(bytes));
+  assert.ok(!fs.existsSync(path.join(dir, "log.md")));
+  assert.deepStrictEqual(fs.readdirSync(dir), ["state.js"]);
 });
