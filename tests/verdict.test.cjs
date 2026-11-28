@@ -246,6 +246,17 @@ test("record refuses a walkthrough that is not plain data, a bad round, and a ba
   assert.deepStrictEqual(fs.readdirSync(path.dirname(good)), ["walk.js"]);
 });
 
+test("a message joined with && is sent only when reply printed one", () => {
+  const v = verdictFile(CHANGES);
+  const go = (...extra) => spawnSync("sh", ["-c", 'node="$1"; shift; body=$("$node" "$@") && echo "SENT: $body"', "sh", process.execPath, SCRIPT, "reply", v, ...extra], { encoding: "utf8" });
+  const refused = go("--except", "1,2");
+  assert.notStrictEqual(refused.status, 0);
+  assert.ok(!refused.stdout.includes("SENT:"), refused.stdout);
+  const sent = go();
+  assert.strictEqual(sent.status, 0);
+  assert.ok(sent.stdout.startsWith("SENT: REVIEW:"), sent.stdout);
+});
+
 test("reply prints REVIEW: and the blocking findings, minus the ones named in --except", () => {
   const v = verdictFile(CHANGES);
   assert.strictEqual(run("reply", v).out, `REVIEW:\n${LINE1}\n${LINE2}\n`);
@@ -377,9 +388,10 @@ test("after the verdict the hub saves it as it came, runs verdict.cjs, and sends
   assert.match(after, /scripts\/verdict\.cjs check/);
   assert.match(after, /scripts\/verdict\.cjs reply <hub>\/reviews\/<id>-r<n>\.md/);
   assert.match(after, /`--except`/);
-  assert.match(after, /Text that starts with `REVIEW:` is the message: send it as it is/);
+  assert.match(after, /body=\$\(node <this skill's folder>\/scripts\/verdict\.cjs reply <hub>\/reviews\/<id>-r<n>\.md\) && <the reply or send command> --body "\$body"/);
+  assert.match(after, /The `&&` sends only when the script printed a `REVIEW:` message/);
+  assert.strictEqual(after.split("$(").length - 1, 1, "one command substitution, and it is joined with &&");
   assert.match(after, /A `cannot parse:` line is not a message, so never send it/);
-  assert.ok(!after.includes("$("), "no command substitution: the hub reads the output before it sends it");
   assert.match(after, /The non-blocking findings stay in the saved verdict, `<hub>\/reviews\/<id>-r<n>\.md`/);
   assert.match(readSkill("references/cleanup.md"), /the non-blocking findings in the saved verdicts under `<hub>\/reviews\/`/);
   assert.match(after, /`fix` is always yours to write, in the same kind of heredoc: the script leaves it empty on a new finding and keeps the ones already written/);
