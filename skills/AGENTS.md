@@ -46,6 +46,7 @@ The skills the Vera plugin ships. Each folder with a `SKILL.md` is one skill; to
 | `allow.cjs` | Writes a worker's permission rules for an autonomy level into its worktree, and takes them back |
 | `protocolhash.cjs` | Hashes the text a hub's `protocol.md` is written from, so a resumed hub can tell the worker protocol changed |
 | `trimlog.cjs` | Moves the log lines after the 30th out of a hub's `state.js` into `log.md`, and changes nothing else |
+| `verdict.cjs` | Reads a saved review verdict: records the round in the walkthrough's `review`, prints the blocking findings, and prints the `REVIEW:` message for the worker |
 
 ### `hub/templates/`
 
