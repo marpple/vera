@@ -256,3 +256,24 @@ test("it refuses and leaves both files when it cannot be sure", () => {
     assert.deepStrictEqual(fs.readdirSync(dir).filter(f => f.endsWith(".tmp")), [], c.name);
   }
 });
+
+// The instruction text that tells the hub when to run trimlog.cjs and to read log.md.
+const readSkill = f => fs.readFileSync(path.join(__dirname, "..", "skills", "hub", f), "utf8");
+
+test("the hub trims the log before it reads state.js, on a resume and after a compaction", () => {
+  const skill = readSkill("SKILL.md");
+  const para = skill.match(/\*\*After a compaction\.\*\*[^\n]*/)[0];
+  assert.ok(para.indexOf("run `trimlog.cjs` as the first Resume bullet of step 1 does") >= 0);
+  assert.ok(para.indexOf("run `trimlog.cjs`") < para.indexOf("read `state.js` and `spec.md` in the hub folder next"));
+  const bullet = skill.split("\n").find(l => l.startsWith("   - Run `node <this skill's folder>/scripts/trimlog.cjs <hub>`"));
+  assert.ok(bullet, "no Resume bullet runs trimlog.cjs");
+  assert.match(bullet, /A `refused:` line changes nothing/);
+  assert.match(bullet, /Read `state\.js` and `spec\.md`/);
+});
+test("the hub folder table names log.md, the close reads it, and the template no longer asks the hub to count", () => {
+  assert.match(readSkill("SKILL.md"), /^\| `log\.md` \| `trimlog\.cjs`/m);
+  assert.match(readSkill("references/cleanup.md"), /Read `<hub>\/log\.md` together with `log` for this/);
+  const tpl = readSkill("templates/state.js");
+  assert.ok(!/keep about 30 entries/.test(tpl));
+  assert.match(tpl, /trimlog\.cjs moves the lines after the 30th to log\.md/);
+});
