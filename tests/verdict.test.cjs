@@ -350,9 +350,11 @@ test("the six checks and the answer form live in reviewer.md, and the brief only
   assert.match(reviewer, /`\[blocking\|non-blocking\] <file>:<line> — <what is wrong> — <why it matters> — <suggested fix>`/);
   assert.match(reviewer, /A script reads your answer/);
   assert.match(reviewer, /the script takes the first three as the separators/);
+  assert.match(reviewer, /stay exactly as written, in every language/);
   const brief = review.split("## Brief")[1].split("## After the verdict")[0];
   assert.match(brief, /Follow <this skill's folder>\/references\/reviewer\.md/);
   assert.match(brief, /answer only `CANNOT READ reviewer\.md`/);
+  assert.match(brief, /the verdict line and the tags stay as reviewer\.md writes them/);
   assert.match(brief, /Read-only: do not commit, push, comment, approve, or edit files\./);
 });
 
@@ -373,4 +375,10 @@ test("after the verdict the hub saves it as it came, runs verdict.cjs, and sends
   assert.match(after, /scripts\/verdict\.cjs check/);
   assert.match(after, /scripts\/verdict\.cjs reply <hub>\/reviews\/<id>-r<n>\.md/);
   assert.match(after, /`--except`/);
+  assert.match(after, /Text that starts with `REVIEW:` is the message: send it as it is/);
+  assert.match(after, /A `cannot parse:` line is not a message, so never send it/);
+  assert.ok(!after.includes("$("), "no command substitution: the hub reads the output before it sends it");
+  assert.match(after, /The non-blocking findings stay in the saved verdict, `<hub>\/reviews\/<id>-r<n>\.md`/);
+  assert.match(readSkill("references/cleanup.md"), /the non-blocking findings in the saved verdicts under `<hub>\/reviews\/`/);
+  assert.match(after, /`fix` is always yours to write, in the same kind of heredoc: the script leaves it empty on a new finding and keeps the ones already written/);
 });

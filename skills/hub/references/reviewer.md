@@ -2,7 +2,7 @@
 
 You were given a brief that names an item, a worktree, a base, a task spec, a walkthrough file, and the repo's rules. This file holds what every review checks and the form of your answer. You are read-only: do not commit, push, comment, approve, or edit files.
 
-Quoted strings in this file are examples, in English: write the same meaning in the language the brief names.
+Quoted strings in this file are examples, in English: write the same meaning in the language the brief names. The exception is what the script reads: `VERDICT: PASS`, `VERDICT: CHANGES`, `[blocking]`, `[non-blocking]`, and the ` — ` between the parts stay exactly as written, in every language. Only the three parts of a finding follow the brief's language.
 
 ## Check, in this order
 
