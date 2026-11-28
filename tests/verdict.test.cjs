@@ -196,7 +196,8 @@ test("CRLF, a BOM, blank lines, and an en dash are read; anything else is refuse
     "**VERDICT: PASS**", "VERDICT: pass", "VERDICT: PASS with notes",
     CHANGES + "\n## Notes", CHANGES + "\n```",
     CHANGES.replace(/ — /g, " - "),
-    "VERDICT: CHANGES\n[blocking] src/a.js:12 — the loop — never stops",
+    "VERDICT: CHANGES\n[blocking] src/a.js:1 — only this",
+    "VERDICT: CHANGES\n[blocking] src/a.js:1 only this",
     "VERDICT: CHANGES\n[blocking] src/a.js — the loop — never stops — cap it",
     "VERDICT: CHANGES\n[major] src/a.js:1 — a — b — c",
     "VERDICT: PASS\n[blocking] src/a.js:1 — a — b — c",
@@ -349,6 +350,7 @@ test("the six checks and the answer form live in reviewer.md, and the brief only
   }
   assert.match(reviewer, /`\[blocking\|non-blocking\] <file>:<line> — <what is wrong> — <why it matters> — <suggested fix>`/);
   assert.match(reviewer, /A script reads your answer/);
+  assert.match(reviewer, /That is three ` — ` in every finding: before what is wrong, before why it matters, and before the fix\./);
   assert.match(reviewer, /the script takes the first three as the separators/);
   assert.match(reviewer, /stay exactly as written, in every language/);
   const brief = review.split("## Brief")[1].split("## After the verdict")[0];
@@ -381,4 +383,38 @@ test("after the verdict the hub saves it as it came, runs verdict.cjs, and sends
   assert.match(after, /The non-blocking findings stay in the saved verdict, `<hub>\/reviews\/<id>-r<n>\.md`/);
   assert.match(readSkill("references/cleanup.md"), /the non-blocking findings in the saved verdicts under `<hub>\/reviews\/`/);
   assert.match(after, /`fix` is always yours to write, in the same kind of heredoc: the script leaves it empty on a new finding and keeps the ones already written/);
+});
+
+const TWO = "tests/trimlog.test.cjs:191 — the interrupted-run test enforces the exact-dedup behaviour above and no test covers a legitimate batch that matches the head of log.md, so the C4 loss goes undetected — add a test where a second batch has the same text as the first and assert that no line is missing from log.md";
+
+test("a finding that joins what is wrong and why is read as what and fix", () => {
+  const text = `VERDICT: CHANGES\n[blocking] ${TWO}\n[non-blocking] src/a.js:40-44 — the name says nothing — the next reader has to trace it — call it pending\n`;
+  const v = verdictFile(text);
+  const c = run("check", v);
+  assert.strictEqual(c.status, 0);
+  assert.strictEqual(c.lines[0], "ok: CHANGES, 1 blocking, 1 non-blocking");
+  assert.strictEqual(c.lines[1], "1. " + TWO);
+  assert.strictEqual(c.lines.length, 2);
+  assert.strictEqual(run("reply", v).out, "REVIEW:\n1. " + TWO + "\n");
+  const file = walkFile({ item: "N1", round: 1, review: [] });
+  const r = run("record", v, file, "--round", "1", "--head", "d4e5f6a");
+  assert.strictEqual(r.out, c.out);
+  const w = readWalk(file);
+  assert.deepStrictEqual(w.review[0].findings[0], { level: "blocking", file: "tests/trimlog.test.cjs", line: 191, what: "the interrupted-run test enforces the exact-dedup behaviour above and no test covers a legitimate batch that matches the head of log.md, so the C4 loss goes undetected", fix: "" });
+  assert.strictEqual(w.review[0].findings[1].what, "the name says nothing — the next reader has to trace it");
+  const bytes = fs.readFileSync(file);
+  assert.strictEqual(run("record", v, file, "--round", "1", "--head", "d4e5f6a").status, 0);
+  assert.ok(fs.readFileSync(file).equals(bytes));
+  w.review[0].findings[0].fix = "Added in 9c1d2e3";
+  fs.writeFileSync(file, "window.HUB_WALK = " + JSON.stringify(w, null, 1) + ";\n");
+  assert.strictEqual(run("record", v, file, "--round", "1", "--head", "d4e5f6a").status, 0);
+  assert.strictEqual(readWalk(file).review[0].findings[0].fix, "Added in 9c1d2e3");
+});
+
+test("from the fourth separator on, the rest belongs to the fix", () => {
+  const v = verdictFile("VERDICT: CHANGES\n[blocking] src/a.js:1 — a — b — c — d — e\n");
+  assert.strictEqual(run("check", v).lines[1], "1. src/a.js:1 — a — b — c — d — e");
+  const file = walkFile({ item: "N1", round: 1, review: [] });
+  assert.strictEqual(run("record", v, file, "--round", "1", "--head", "d4e5f6a").status, 0);
+  assert.strictEqual(readWalk(file).review[0].findings[0].what, "a — b");
 });

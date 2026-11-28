@@ -11,8 +11,9 @@
 // The verdict file: a BOM is dropped, lines split on \r?\n, each trimmed, blank lines dropped. The first line is exactly
 // "VERDICT: PASS" or "VERDICT: CHANGES"; every other line is "[blocking] " or "[non-blocking] ", then <file>:<line> or
 // <file>:<line>-<line>, then what, why, fix, each after " — " (U+2014) or " – " (U+2013); from the fourth separator on, the text belongs to fix.
+// A finding of only two parts after the location is read as what is wrong (with the why joined into it) and the fix; one part is refused.
 // PASS with a blocking line, or CHANGES with none, is refused.
-// record: the round { round, verdict, head, findings: [{ level, file, line, what: "<what> — <why>", fix: "" }] } goes into the
+// record: the round { round, verdict, head, findings: [{ level, file, line, what: "<what> — <why>" (just "<what>" for a two-part finding), fix: "" }] } goes into the
 // walkthrough's `review` array (made if missing). The first round already there with this number is replaced in its place (other entries with the same number are kept), and a non-empty fix of a finding with the same
 // level, file, line, and what moves to the new one. A review that is neither missing, null, nor a list is refused. Other rounds are
 // kept exactly as they are (rounds without a numeric round sort last, in their order). --from copies every entry of the earlier walkthrough's review in its order, except a numbered round whose number the target held before the copy and an unnumbered entry the target already holds as identical JSON.
@@ -31,7 +32,7 @@ function read(file) {
   catch (e) { return refuse(`${file} cannot be read (${e.code || e.message})`); }
 }
 
-const FINDING = /^\[(blocking|non-blocking)\] (\S+?):(\d+)(?:-(\d+))? [—–] (.+?) [—–] (.+?) [—–] (.+)$/;
+const FINDING = /^\[(blocking|non-blocking)\] (\S+?):(\d+)(?:-(\d+))? [—–] (.+?) [—–] (?:(.+?) [—–] )?(.+)$/;
 
 function parseVerdict(file) {
   const lines = read(file).replace(/^﻿/, "").split(/\r?\n/).map(l => l.trim()).filter(l => l !== "");
@@ -39,7 +40,7 @@ function parseVerdict(file) {
   const verdict = lines[0].slice("VERDICT: ".length);
   const findings = lines.slice(1).map((l, i) => {
     const m = FINDING.exec(l);
-    if (!m) return refuse(`line ${i + 2} of ${file} is not "[blocking] or [non-blocking] <file>:<line> — what — why — fix": ${l}`);
+    if (!m) return refuse(`line ${i + 2} of ${file} is not "[blocking] or [non-blocking] <file>:<line> — what is wrong — why it matters — fix": ${l}`);
     return { level: m[1], file: m[2], line: Number(m[3]), where: m[4] ? `${m[2]}:${m[3]}-${m[4]}` : `${m[2]}:${m[3]}`, what: m[5], why: m[6], fix: m[7] };
   });
   const blocking = findings.filter(f => f.level === "blocking");
@@ -48,7 +49,7 @@ function parseVerdict(file) {
   return { verdict, findings, blocking };
 }
 
-const show = (f, i) => `${i}. ${f.where} — ${f.what} — ${f.why} — ${f.fix}`;
+const show = (f, i) => `${i}. ${f.where} — ${f.what} — ${f.why === undefined ? "" : f.why + " — "}${f.fix}`;
 
 function readWalk(file) {
   const m = read(file).match(/^\s*window\.HUB_WALK\s*=\s*([\s\S]*?);?\s*$/);
@@ -82,7 +83,7 @@ function record(v, walkFile, round, head, fromFile) {
   const entry = {
     round, verdict: v.verdict, head,
     findings: v.findings.map(f => {
-      const made = { level: f.level, file: f.file, line: f.line, what: `${f.what} — ${f.why}` };
+      const made = { level: f.level, file: f.file, line: f.line, what: f.why === undefined ? f.what : `${f.what} — ${f.why}` };
       const kept = old && Array.isArray(old.findings) ? old.findings.find(o => o && typeof o === "object" && sameFinding(o, made) && typeof o.fix === "string" && o.fix !== "") : undefined;
       return { ...made, fix: kept ? kept.fix : "" };
     }),

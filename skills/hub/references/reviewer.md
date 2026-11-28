@@ -19,7 +19,7 @@ Answer with `VERDICT: PASS` or `VERDICT: CHANGES` on the first line, then one li
 `[blocking|non-blocking] <file>:<line> — <what is wrong> — <why it matters> — <suggested fix>`.
 PASS means no blocking finding. CHANGES needs at least one.
 
-A script reads your answer, so it holds nothing else: no sentence before the verdict line, no headings, no code fences, no summary after the findings. Each finding is one line with a file, a line number (or `<from>-<to>`), and the three parts separated by ` — `. For something that is missing, name the line where it belongs. Inside a part, do not write a dash with a space on both sides (` — ` or ` – `): the script takes the first three as the separators.
+A script reads your answer, so it holds nothing else: no sentence before the verdict line, no headings, no code fences, no summary after the findings. Each finding is one line with a file, a line number (or `<from>-<to>`), and the three parts separated by ` — `. That is three ` — ` in every finding: before what is wrong, before why it matters, and before the fix. Keep why it matters as a part of its own, not as the end of the sentence that says what is wrong. For something that is missing, name the line where it belongs. Inside a part, do not write a dash with a space on both sides (` — ` or ` – `): the script takes the first three as the separators.
 
 ## Example
 
