@@ -24,6 +24,7 @@ The whole check for this repo: `node --test` from the root runs every file here 
 | `allow.test.cjs` | `allow.cjs`: the rules written into a worker's worktree, and their removal |
 | `diffhash.test.cjs` | `diffhash.cjs`: the changed-lines hash across rebases, edits, and file kinds |
 | `walkcheck.test.cjs` | `walkcheck.cjs`: a walkthrough data file checked against the committed head |
+| `trimlog.test.cjs` | `trimlog.cjs`: only the tail of the log leaves `state.js`, a second run changes nothing, and it refuses when it cannot be sure |
 | `sync-loop.test.cjs` | `sync.cjs` as a loop: the pid guard, a missing `state.js`, `closed: true`, the page server |
 | `sync-notes.test.cjs` | `sync.cjs` as a module: the notes it takes from worker messages |
 | `dashboard-lang.test.cjs` | `dashboard.html` renders its labels in the language `state.js` names |
