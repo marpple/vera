@@ -15,7 +15,7 @@
 // record: the round { round, verdict, head, findings: [{ level, file, line, what: "<what> — <why>", fix: "" }] } goes into the
 // walkthrough's `review` array (made if missing). A round already there is replaced, and a non-empty fix of a finding with the same
 // level, file, line, and what moves to the new one. A review that is neither missing, null, nor a list is refused. Other rounds are
-// kept exactly as they are (rounds without a numeric round sort last, in their order). --from adds the rounds of an earlier walkthrough that the target lacks.
+// kept exactly as they are (rounds without a numeric round sort last, in their order). --from copies every entry of the earlier walkthrough's review in its order, except a numbered round whose number the target held before the copy and an unnumbered entry the target already holds as identical JSON.
 // The walkthrough is written once, after every check, to a temp file next to it and renamed over it; text that would not change is not written.
 const fs = require("node:fs");
 
@@ -68,7 +68,15 @@ function record(v, walkFile, round, head, fromFile) {
   if (fromFile !== undefined) {
     const earlier = readWalk(fromFile).review;
     if (earlier !== undefined && earlier !== null && !Array.isArray(earlier)) refuse("the walkthrough's review is not a list");
-    if (Array.isArray(earlier)) for (const r of earlier) if (r && !review.some(x => x && x.round === r.round)) review.push(r);
+    if (Array.isArray(earlier)) {
+      const isNum = r => r !== null && typeof r === "object" && typeof r.round === "number";
+      const held = new Set(review.filter(isNum).map(r => r.round));
+      const texts = new Set(review.map(r => JSON.stringify(r)));
+      for (const r of earlier) {
+        if (isNum(r) ? held.has(r.round) : texts.has(JSON.stringify(r))) continue;
+        review.push(r);
+      }
+    }
   }
   const old = review.find(r => r && r.round === round);
   const entry = {
@@ -79,7 +87,7 @@ function record(v, walkFile, round, head, fromFile) {
       return { ...made, fix: kept ? kept.fix : "" };
     }),
   };
-  const rest = review.filter(r => r !== old);
+  const rest = review.filter(r => !(r && r.round === round));
   rest.push(entry);
   const num = r => r && typeof r.round === "number";
   w.review = rest.sort((a, b) => (num(a) && num(b) ? a.round - b.round : num(a) ? -1 : num(b) ? 1 : 0));

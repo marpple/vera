@@ -164,12 +164,15 @@ test("rounds of any other shape are kept as they are, and recording over one doe
   assert.deepStrictEqual(rounds(w), [1, 2, 3]);
   assert.deepStrictEqual(w.review[0], r1);
   assert.deepStrictEqual(w.review[1], r2);
+  assert.strictEqual(JSON.stringify(w.review[0]), JSON.stringify(r1));
+  assert.strictEqual(JSON.stringify(w.review[1]), JSON.stringify(r2));
   assert.strictEqual(run("record", verdictFile(CHANGES), file, "--round", "1", "--head", "d4e5f6a").status, 0);
   w = readWalk(file);
   assert.deepStrictEqual(rounds(w), [1, 2, 3]);
   assert.strictEqual(w.review[0].verdict, "CHANGES");
   assert.strictEqual(w.review[0].findings.length, 3);
   assert.deepStrictEqual(w.review[1], r2);
+  assert.strictEqual(JSON.stringify(w.review[1]), JSON.stringify(r2));
   // a round without a numeric round sorts after the numbered ones
   const odd = walkFile({ item: "N1", review: [{ verdict: "PASS", text: "no number" }, r2] });
   assert.strictEqual(run("record", verdictFile(PASS), odd, "--round", "3", "--head", "d4e5f6a").status, 0);
@@ -265,4 +268,52 @@ test("an unknown command, or a missing argument, is refused", () => {
     assert.ok(c.out.startsWith("cannot parse: "), args.join(" "));
     assert.strictEqual(c.err, "");
   }
+});
+
+const EARLIER = [
+  { verdict: "a" }, { verdict: "b" },
+  { round: 1, verdict: "REQUEST CHANGES", findings: 9, resolved: "x" },
+  { round: 1, verdict: "PASS", text: "dup" },
+  { round: 2, verdict: "PASS", text: "y" },
+];
+
+test("--from copies every earlier entry as it is, and a second run adds nothing", () => {
+  const src = walkFile({ item: "N1", review: EARLIER });
+  const srcBytes = fs.readFileSync(src);
+  const target = walkFile({ item: "N1", review: [] });
+  const args = ["record", verdictFile(PASS), target, "--round", "3", "--head", "d4e5f6a", "--from", src];
+  assert.strictEqual(run(...args).status, 0);
+  const w = readWalk(target);
+  assert.strictEqual(w.review.length, 6);
+  const texts = w.review.map(r => JSON.stringify(r));
+  for (const e of EARLIER) assert.ok(texts.includes(JSON.stringify(e)), JSON.stringify(e));
+  assert.strictEqual(w.review.filter(r => r.round === 3).length, 1);
+  assert.ok(fs.readFileSync(src).equals(srcBytes));
+  const bytes = fs.readFileSync(target);
+  assert.strictEqual(run(...args).status, 0);
+  assert.ok(fs.readFileSync(target).equals(bytes));
+});
+
+test("--from does not copy a round number the target already holds", () => {
+  const src = walkFile({ item: "N1", review: EARLIER });
+  const mine = { round: 2, verdict: "PASS", text: "mine" };
+  const target = walkFile({ item: "N1", review: [mine] });
+  assert.strictEqual(run("record", verdictFile(PASS), target, "--round", "3", "--head", "d4e5f6a", "--from", src).status, 0);
+  const texts = readWalk(target).review.map(r => JSON.stringify(r));
+  assert.ok(texts.includes(JSON.stringify(mine)));
+  assert.ok(!texts.includes(JSON.stringify(EARLIER[4])));
+  for (const e of EARLIER.slice(0, 4)) assert.ok(texts.includes(JSON.stringify(e)), JSON.stringify(e));
+  assert.strictEqual(texts.length, 6);
+});
+
+test("non-object entries in review and in findings do not stop a record, and the fix is kept", () => {
+  const finding = { level: "blocking", file: "src/a.js", line: 12, what: "the retry loop never stops — a failing upstream hangs the request", fix: "kept" };
+  const file = walkFile({ item: "N1", review: [null, "note", { round: 1, verdict: "CHANGES", head: "d4e5f6a", findings: [1, null, finding] }] });
+  const c = run("record", verdictFile(CHANGES), file, "--round", "1", "--head", "d4e5f6a");
+  assert.strictEqual(c.status, 0);
+  const w = readWalk(file);
+  assert.ok(w.review.includes(null));
+  assert.ok(w.review.includes("note"));
+  const r1 = w.review.find(r => r && r.round === 1);
+  assert.strictEqual(r1.findings[0].fix, "kept");
 });
