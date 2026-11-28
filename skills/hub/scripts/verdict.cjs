@@ -8,6 +8,7 @@
 //   "<i>. <file>:<line> — <first 60 characters of what is wrong>" and "…" after them when what is wrong is longer ("<file>:<from>-<to>"
 //   for a range; i counts from 1, blocking findings only, in the file's order; characters are code points). The rest of a finding is
 //   not printed again: the hub has read it in the reviewer's answer.
+// record adds "; rounds <list>" to that first line: the numeric `round` values the walkthrough's review holds afterwards, in its order.
 // reply exit 0: "REVIEW:", then each blocking finding in full, "<i>. <file>:<line> — <the parts as written>", with the same numbers
 //   check and record gave, minus those named in --except.
 // Exit 2: "cannot parse: <reason>". Every refusal leaves every file as it was and removes its own temp file.
@@ -96,13 +97,14 @@ function record(v, walkFile, round, head, fromFile) {
   const num = r => r && typeof r.round === "number";
   w.review = rest.sort((a, b) => (num(a) && num(b) ? a.round - b.round : num(a) ? -1 : num(b) ? 1 : 0));
   const text = "window.HUB_WALK = " + JSON.stringify(w, null, 1) + ";\n";
-  if (text === before) return;
+  if (text === before) return w.review;
   const tmp = `${walkFile}.${process.pid}.tmp`;
   tmps.push(tmp);
   try {
     fs.writeFileSync(tmp, text);
     fs.renameSync(tmp, walkFile);
   } catch (e) { refuse(`${walkFile} cannot be written (${e.code || e.message})`); }
+  return w.review;
 }
 
 function main() {
@@ -123,10 +125,12 @@ function main() {
     return `${i + 1}. ${f.where} — ${chars.slice(0, 60).join("")}${chars.length > 60 ? "…" : ""}`;
   });
 
+  let held = "";
   if (cmd === "record") {
     if (!/^[1-9]\d*$/.test(opt["--round"] || "")) refuse("--round must be an integer of 1 or more");
     if (!/^[0-9a-f]{7,40}$/.test(opt["--head"] || "")) refuse("--head must be 7 to 40 lowercase hex digits");
-    record(v, pos[1], Number(opt["--round"]), opt["--head"], opt["--from"]);
+    const review = record(v, pos[1], Number(opt["--round"]), opt["--head"], opt["--from"]);
+    held = `; rounds ${review.filter(r => r && typeof r.round === "number").map(r => r.round).join(", ")}`;
   }
   if (cmd === "reply") {
     let skip = [];
@@ -139,7 +143,7 @@ function main() {
     console.log(["REVIEW:", ...kept].join("\n"));
     return;
   }
-  console.log([`ok: ${v.verdict}, ${v.blocking.length} blocking, ${v.findings.length - v.blocking.length} non-blocking`, ...places].join("\n"));
+  console.log([`ok: ${v.verdict}, ${v.blocking.length} blocking, ${v.findings.length - v.blocking.length} non-blocking${held}`, ...places].join("\n"));
 }
 
 try { main(); }

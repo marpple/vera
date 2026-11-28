@@ -59,7 +59,7 @@ test("record writes the round into the walkthrough's review and keeps the rest o
   const file = walkFile(base());
   const c = run("record", verdictFile(CHANGES), file, "--round", "1", "--head", "d4e5f6a");
   assert.strictEqual(c.status, 0);
-  assert.strictEqual(c.out, run("check", verdictFile(CHANGES)).out);
+  assert.strictEqual(c.out, run("check", verdictFile(CHANGES)).out.replace("\n", "; rounds 1\n"));
   const w = readWalk(file);
   assert.deepStrictEqual(w.review, [{ round: 1, verdict: "CHANGES", head: "d4e5f6a", findings: [
     { level: "blocking", file: "src/a.js", line: 12, what: "the retry loop never stops — a failing upstream hangs the request", fix: "" },
@@ -368,9 +368,10 @@ test("the six checks and the answer form live in reviewer.md, and the brief only
   assert.match(reviewer, /the script takes the first three as the separators/);
   assert.match(reviewer, /stay exactly as written, in every language/);
   const brief = review.split("## Brief")[1].split("## After the verdict")[0];
+  assert.match(brief, /previous blocking findings: the `\[blocking\]` lines of <hub>\/reviews\/<id>-r<n-1>\.md<, except the ones the hub set aside: <their places>>\. Since the last review:/);
   assert.match(brief, /Follow <this skill's folder>\/references\/reviewer\.md/);
   assert.match(brief, /answer only `CANNOT READ reviewer\.md`/);
-  assert.match(brief, /the verdict line and the tags stay as reviewer\.md writes them/);
+  assert.match(brief, /the verdict line and the tags stay in English, exactly as the form writes them/);
   assert.match(brief, /Read-only: do not commit, push, comment, approve, or edit files\./);
 });
 
@@ -386,8 +387,15 @@ test("the form reviewer.md asks for is the form verdict.cjs reads", () => {
 test("after the verdict the hub saves it as it came, runs verdict.cjs, and sends what it prints", () => {
   const after = readSkill("references/review.md").split("## After the verdict")[1];
   assert.match(after, /Save the reviewer's answer as it came/);
+  assert.match(after, /Never change the saved file afterwards: the script reads it\./);
+  assert.ok(after.includes("{ printf '## %s\\n\\n' \"<heading>\"; cat <that file>; } | gh pr comment <n> --body-file -`"));
+  assert.match(after, /From the second walkthrough round on \(`k` above 1\), always add `--from <hub>\/walkthroughs\/<id>-w<k-1>\.js`: it copies the earlier rounds the new file lacks and changes nothing when they are there\./);
+  assert.match(after, /`record` adds the rounds the file now holds, `; rounds 1, 2`: when a review round before this one is missing from that list, write it back by hand from its saved verdict in `<hub>\/reviews\/`/);
+  assert.match(after, /the command is Orca's `orca orchestration reply --id <askId>` \(protocol rule 6c\); with the PR open it is Orca's `send` to the worker \(it reopens a closed worker; protocol rule 11\)/);
+  assert.match(after, /nothing blocks the item any more, so go on as in step 3 \(PASS\) and not as below, with every overrule recorded as step 5 says so the developer sees them on the page\./);
   assert.match(after, /scripts\/verdict\.cjs record <hub>\/reviews\/<id>-r<n>\.md <hub>\/walkthroughs\/<id>-w<k>\.js --round <n> --head <reviewHead>/);
-  assert.match(after, /A `cannot parse:` line/);
+  assert.match(after, /A `cannot parse:` line gives its reason: read it first\. When it is about the command \(a path, `--round`, `--head`\), correct the command and run it again\./);
+  assert.match(after, /use a `node - <<'RV'` heredoc: load the file,/);
   assert.match(after, /scripts\/verdict\.cjs check/);
   assert.match(after, /scripts\/verdict\.cjs reply <hub>\/reviews\/<id>-r<n>\.md/);
   assert.match(after, /`--except`/);
@@ -397,14 +405,14 @@ test("after the verdict the hub saves it as it came, runs verdict.cjs, and sends
   assert.match(after, /A `cannot parse:` line is not a message, so never send it/);
   assert.match(after, /The non-blocking findings stay in the saved verdict, `<hub>\/reviews\/<id>-r<n>\.md`/);
   assert.match(readSkill("references/cleanup.md"), /the non-blocking findings in the saved verdicts under `<hub>\/reviews\/`/);
-  assert.match(after, /Both commands print `ok:` with the verdict and the counts, then the number, the place and the first words of every blocking finding \(`1\. <file>:<line> — <first words>…`\): the whole text is in the answer you just read, so the script does not print it again\./);
+  assert.match(after, /Both commands print `ok:` with the verdict and the counts \(`record` adds the rounds the file now holds, `; rounds 1, 2`: when a review round before this one is missing from that list, write it back by hand from its saved verdict in `<hub>\/reviews\/`\), then the number, the place and the first words of every blocking finding \(`1\. <file>:<line> — <first words>…`\): the whole text is in the answer you just read, so the script does not print it again\./);
   const gate = after.indexOf("First see whether the developer's language is the PR language");
   assert.ok(gate > 0 && gate < after.indexOf("verdict.cjs record"), "the language condition comes before the record command");
   assert.ok(after.includes("do not run `record`"));
   assert.match(after, /the numbers are the ones `record` or `check` printed, which count only the blocking findings\. The `&&` sends only when the script printed a `REVIEW:` message\. When the script refused, nothing was sent: run it alone and read its line\./);
   assert.match(after, /with `verdict` exactly `"PASS"` or `"CHANGES"` and `level` exactly `"blocking"` or `"non-blocking"`: the page compares these words/);
   assert.match(after, /You read them in the reviewer's answer, and `record` or `check` numbered them, so do not write them again: let the script write the message\./);
-  assert.match(after, /`fix` is always yours to write, in the same kind of heredoc: the script leaves it empty on a new finding and keeps the ones already written/);
+  assert.match(after, /`fix` is always yours to write, in the same kind of heredoc, and it is never the reviewer's suggested fix: the page shows it as how the finding was handled\. On a new finding it stays `""`, in a round you write yourself too; the script leaves it empty there and keeps the ones already written/);
 });
 
 const TWO = "tests/trimlog.test.cjs:191 — the interrupted-run test enforces the exact-dedup behaviour above and no test covers a legitimate batch that matches the head of log.md, so the C4 loss goes undetected — add a test where a second batch has the same text as the first and assert that no line is missing from log.md";
@@ -420,7 +428,7 @@ test("a finding that joins what is wrong and why is read as what and fix", () =>
   assert.strictEqual(run("reply", v).out, "REVIEW:\n1. " + TWO + "\n");
   const file = walkFile({ item: "N1", round: 1, review: [] });
   const r = run("record", v, file, "--round", "1", "--head", "d4e5f6a");
-  assert.strictEqual(r.out, c.out);
+  assert.strictEqual(r.out, c.out.replace("\n", "; rounds 1\n"));
   const w = readWalk(file);
   assert.deepStrictEqual(w.review[0].findings[0], { level: "blocking", file: "tests/trimlog.test.cjs", line: 191, what: "the interrupted-run test enforces the exact-dedup behaviour above and no test covers a legitimate batch that matches the head of log.md, so the C4 loss goes undetected", fix: "" });
   assert.strictEqual(w.review[0].findings[1].what, "the name says nothing — the next reader has to trace it");
@@ -467,7 +475,7 @@ test("check and record print the place and the first words of each blocking find
     `6. b.js:4 — ${"가".repeat(60)}…`,
   ].join("\n") + "\n";
   assert.strictEqual(run("check", v).out, want);
-  assert.strictEqual(run("record", v, walkFile(base()), "--round", "1", "--head", "d4e5f6a").out, want);
+  assert.strictEqual(run("record", v, walkFile(base()), "--round", "1", "--head", "d4e5f6a").out, want.replace("\n", "; rounds 1\n"));
   const r = run("reply", v);
   assert.strictEqual(r.lines[0], "REVIEW:");
   assert.ok(r.lines[1].startsWith("1. src/a.js:12 — the retry loop never stops — "));
@@ -486,4 +494,20 @@ test("the page compares the words the hub is told to write by hand", () => {
   const page = fs.readFileSync(path.join(__dirname, "..", "skills", "hub", "templates", "walkthrough.html"), "utf8");
   assert.ok(page.includes('r.verdict === "PASS"'));
   assert.ok(page.includes('f.level === "blocking"'));
+});
+
+test("record prints the rounds the walkthrough now holds", () => {
+  const v = verdictFile(PASS);
+  const args = (file, n, ...x) => ["record", v, file, "--round", String(n), "--head", "d4e5f6a", ...x];
+  const first = line => run(...line).lines[0];
+  const empty = walkFile(base());
+  assert.strictEqual(first(args(empty, 2)), "ok: PASS, 0 blocking, 1 non-blocking; rounds 2");
+  const one = walkFile({ item: "N1", review: [{ round: 1, verdict: "PASS", head: "1111111", findings: [] }] });
+  assert.strictEqual(first(args(one, 2)), "ok: PASS, 0 blocking, 1 non-blocking; rounds 1, 2");
+  assert.strictEqual(first(args(one, 2)), "ok: PASS, 0 blocking, 1 non-blocking; rounds 1, 2");
+  const src = walkFile({ item: "N1", review: [{ round: 1, verdict: "PASS", head: "1111111", findings: [] }] });
+  const target = walkFile(base());
+  assert.strictEqual(first(args(target, 2, "--from", src)), "ok: PASS, 0 blocking, 1 non-blocking; rounds 1, 2");
+  assert.strictEqual(first(args(target, 2, "--from", src)), "ok: PASS, 0 blocking, 1 non-blocking; rounds 1, 2");
+  assert.ok(!run("check", v).out.includes("rounds"));
 });
