@@ -99,7 +99,7 @@ window.HUB_STATE = {
       options: ["Off by default", "On by default"], recommend: "Off by default", items: ["N2", "N4"] },
     { id: "P2", status: "answered", text: "Who merges?", answer: "The hub merges once the developer approves" }
   ],
-  // Newest first. The page shows the first 8; keep about 30 entries.
+  // Newest first. The page shows the first 8. On a resume and after a compaction, scripts/trimlog.cjs moves the lines after the 30th to log.md.
   log: [
     "14:20 · CI passed on N1 (#41), so I asked for the merge approval",
     "14:05 · N2 saw its 6 tests fail and started the code",
